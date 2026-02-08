@@ -1,31 +1,27 @@
 
 
-# LingoBuddy - Home Screen Layout
+# Add Relationship Context Selector to Analyze Page
 
-## Overview
-Create the visual layout for LingoBuddy's home screen — a mobile-first UI for an AI-powered slang decoder app. This is a static/visual-only implementation with no functionality.
+## What Changes
+Update the `/analyze` page to include a relationship context selector between the image preview and the Analyze button. The home page (`Index.tsx`) stays untouched.
 
-## Screen: Home Page (`/`)
+## Analyze Page Layout (top to bottom)
 
-### Header Bar
-- **Left:** Hamburger menu icon (☰)
-- **Right:** "New chat" button with a + icon
-- Minimal, dark header
+1. **Header** -- back arrow + title "Add Context" (rename from "Analyzing...")
+2. **Image preview** -- centered, max-height 400px, rounded (already exists)
+3. **Context selector** -- label "Who sent this?" + 4 pill-style toggle buttons in a horizontal row:
+   - Friend, Work, Dating, Formal
+   - Selected state: filled with `bg-cta` (yellow-green) + dark text
+   - Unselected state: `bg-secondary` border with white text
+4. **Analyze button** -- full-width CTA button, disabled until a context pill is selected
 
-### Main Content
-- **Greeting heading:** "What did you find, Alex?" (large, bold)
-- **Subtext:** "Show Leon what's confusing" (white at 70% opacity)
-- **Upload zone:** Large dashed-border area with upload icon and "Upload a screenshot" text, centered
-- **Clipboard link:** "Paste from clipboard" text link below the upload zone
-- **Analyze button:** Full-width button at the bottom in yellow-green (#E4FB4E) with dark text (#1A2E05), shown in disabled state
+## Technical Details
 
-### Design System
-- **Background:** Dark (#121214)
-- **Primary green:** #7BD746
-- **Accent yellow-green:** #ECFF51
-- **Button color:** #E4FB4E with #1A2E05 text
-- **Text:** White primary, white at 70% opacity for secondary
-- **Typography:** System SF Pro Display/Text (falls back to system fonts)
-- **Layout:** Mobile-first, max-width 430px, centered on larger screens
-- **Style:** iOS-inspired with rounded corners and minimal shadows
+**File: `src/pages/Analyze.tsx`**
+- Add `useState` for `selectedContext` (type: `"friend" | "work" | "dating" | "formal" | null`)
+- Render 4 pill buttons using `map` over a contexts array
+- Style selected pill with `bg-cta text-cta-foreground`, unselected with `bg-secondary text-foreground`
+- Analyze button disabled when `!selectedContext`
+- No navigation on Analyze tap yet (placeholder/toast) since results page doesn't exist
 
+No other files are modified. The upload flow on the home page remains completely unchanged.

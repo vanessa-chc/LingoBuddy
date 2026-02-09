@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const CONTEXTS = [
   { value: "friend", label: "Friend" },
@@ -17,10 +18,83 @@ const Analyze = () => {
   const navigate = useNavigate();
   const imageData = location.state?.imageData as string | undefined;
   const [selectedContext, setSelectedContext] = useState<ContextValue | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const handleAnalyze = () => {
-    toast("Analysis coming soon!");
-  };
+  const handleAnalyze = useCallback(async () => {
+    if (!imageData || !selectedContext) return;
+
+    setIsAnalyzing(true);
+    abortRef.current = new AbortController();
+
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-screenshot", {
+        body: { imageBase64: imageData, context: selectedContext },
+      });
+
+      if (abortRef.current?.signal.aborted) return;
+
+      if (error) {
+        throw new Error(error.message || "Analysis failed");
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      navigate("/results", {
+        state: { analysisData: data, imageData, context: selectedContext },
+      });
+    } catch (e: any) {
+      if (e?.name === "AbortError" || abortRef.current?.signal.aborted) return;
+      console.error("Analysis error:", e);
+      toast.error(e?.message || "Analysis failed. Please try again.");
+      setIsAnalyzing(false);
+    }
+  }, [imageData, selectedContext, navigate]);
+
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort();
+    setIsAnalyzing(false);
+  }, []);
+
+  // Scanning overlay
+  if (isAnalyzing) {
+    return (
+      <div className="min-h-screen bg-background flex justify-center">
+        <div className="w-full max-w-[430px] flex flex-col min-h-screen items-center justify-center px-5">
+          {/* Image with scan line */}
+          <div className="relative w-full max-w-[300px] overflow-hidden rounded-xl">
+            {imageData && (
+              <img
+                src={imageData}
+                alt="Scanning"
+                className="w-full object-contain rounded-xl"
+                style={{ boxShadow: "0px 4px 20px rgba(0,0,0,0.3)" }}
+              />
+            )}
+            {/* Animated scan line */}
+            <div
+              className="absolute left-0 right-0 h-[3px] animate-scan-line"
+              style={{ background: "hsl(var(--cta))", boxShadow: "0 0 12px hsl(var(--cta) / 0.6)" }}
+            />
+          </div>
+
+          <p className="mt-6 text-lg font-semibold text-foreground">Scanning the vibe...</p>
+          <p className="mt-2 text-base" style={{ color: "hsl(var(--cta))" }}>
+            Chatting with {selectedContext ? selectedContext.charAt(0).toUpperCase() + selectedContext.slice(1) : ""}
+          </p>
+
+          <button
+            onClick={handleCancel}
+            className="mt-8 px-6 py-3 rounded-full border border-border text-foreground text-sm font-medium hover:bg-secondary transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex justify-center">
@@ -45,7 +119,7 @@ const Analyze = () => {
               <img
                 src={imageData}
                 alt="Uploaded screenshot"
-                className="max-h-[400px] rounded-xl object-contain"
+                className="max-h-[400px] object-contain"
                 style={{
                   borderRadius: 12,
                   boxShadow: "0px 4px 20px rgba(0,0,0,0.3)",
@@ -89,7 +163,9 @@ const Analyze = () => {
                       ? "2px solid hsl(var(--cta))"
                       : "1px solid rgba(255,255,255,0.15)",
                     background: isSelected ? "hsl(var(--cta))" : "transparent",
-                    color: isSelected ? "hsl(var(--cta-foreground))" : "hsl(var(--foreground))",
+                    color: isSelected
+                      ? "hsl(var(--cta-foreground))"
+                      : "hsl(var(--foreground))",
                   }}
                 >
                   {ctx.label}

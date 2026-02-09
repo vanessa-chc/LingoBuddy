@@ -1,27 +1,46 @@
 
 
-# Add Relationship Context Selector to Analyze Page
+# Fix Auto-Navigation and Analyze Page Layout
 
-## What Changes
-Update the `/analyze` page to include a relationship context selector between the image preview and the Analyze button. The home page (`Index.tsx`) stays untouched.
+## Issue 1: Auto-Navigate After Upload
 
-## Analyze Page Layout (top to bottom)
+### Changes to `src/pages/Index.tsx`
+- Modify `handleFileChange` to navigate to `/analyze` immediately after converting the file to base64, instead of setting local state
+- Modify `handlePaste` to navigate to `/analyze` immediately after reading the clipboard image
+- Remove the image preview state and UI (the preview will now live only on `/analyze`)
+- Remove the "Analyze" button entirely
+- Remove the X-button removal logic (no longer needed on home page)
+- Keep the upload zone, action sheet, clipboard link, and file input as-is
 
-1. **Header** -- back arrow + title "Add Context" (rename from "Analyzing...")
-2. **Image preview** -- centered, max-height 400px, rounded (already exists)
-3. **Context selector** -- label "Who sent this?" + 4 pill-style toggle buttons in a horizontal row:
-   - Friend, Work, Dating, Formal
-   - Selected state: filled with `bg-cta` (yellow-green) + dark text
-   - Unselected state: `bg-secondary` border with white text
-4. **Analyze button** -- full-width CTA button, disabled until a context pill is selected
+### Changes to `src/components/UploadActionSheet.tsx`
+- No changes needed
 
-## Technical Details
+## Issue 2: Analyze Page Layout Fixes
 
-**File: `src/pages/Analyze.tsx`**
-- Add `useState` for `selectedContext` (type: `"friend" | "work" | "dating" | "formal" | null`)
-- Render 4 pill buttons using `map` over a contexts array
-- Style selected pill with `bg-cta text-cta-foreground`, unselected with `bg-secondary text-foreground`
-- Analyze button disabled when `!selectedContext`
-- No navigation on Analyze tap yet (placeholder/toast) since results page doesn't exist
+### Changes to `src/pages/Analyze.tsx`
 
-No other files are modified. The upload flow on the home page remains completely unchanged.
+**Screenshot preview:**
+- Max-height 400px, centered, border-radius 12px
+- Add shadow: `0px 4px 20px rgba(0,0,0,0.3)`
+- Add X button (top-right): 32x32px circle with white 15% background
+- When X is tapped, navigate back to `/` (since we no longer store state on home page)
+
+**"Chatting with..." label:**
+- Change "Who sent this?" to "Chatting with..."
+- margin-top 24px from screenshot
+- Font size 17px, white at 70% opacity, left-aligned
+
+**Context pills:**
+- Wrap in a horizontal overflow-x-auto scroll container
+- Gap 12px between pills
+- Each pill: padding 12px 24px, border-radius 24px, font 17px semibold
+- Unselected: transparent background, 1px solid border at `rgba(255,255,255,0.15)`
+- Selected: 2px solid `#E4FB4E` border, `#E4FB4E` background, `#1A2E05` text
+- Remove `flex-1` so pills size to content
+
+**Analyze button:**
+- Fixed position at bottom, 24px from bottom edge
+- Full width with 20px padding on each side (total 40px)
+- Height 56px, border-radius 20px
+- Background `#E4FB4E`, text `#1A2E05` at 17px semibold
+- Add bottom padding to main content so it doesn't hide behind the fixed button

@@ -1,9 +1,9 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Copy, Check } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { motion, useMotionValue, useTransform, useAnimation, PanInfo } from "framer-motion";
 import { useCallback, useRef, useState, useEffect } from "react";
 import WordLabCard from "@/components/WordLabCard";
-import { toast } from "sonner";
+import PlaybookSection from "@/components/PlaybookSection";
 
 const SNAP_POINTS = { expanded: 0.1, mid: 0.4, minimized: 0.6 };
 
@@ -16,7 +16,6 @@ const Results = () => {
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const controls = useAnimation();
   const y = useMotionValue(windowHeight * SNAP_POINTS.mid);
 
@@ -77,13 +76,6 @@ const Results = () => {
     },
     [y, windowHeight, controls, navigate]
   );
-
-  const copyReply = useCallback((text: string, index: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(index);
-    toast.success("Copied to clipboard");
-    setTimeout(() => setCopiedIndex(null), 2000);
-  }, []);
 
   if (!analysisData) {
     return (
@@ -189,29 +181,10 @@ const Results = () => {
             })()}
 
             {/* Playbook */}
-            {analysisData.suggestedReplies?.length > 0 && (
-              <>
-                <section className="mb-5">
-                  <span className="text-base font-semibold text-foreground mb-3 block">Playbook</span>
-                  <div className="flex flex-col gap-2">
-                    {analysisData.suggestedReplies.map((reply: string, i: number) => (
-                      <button
-                        key={i}
-                        onClick={() => copyReply(reply, i)}
-                        className="flex items-center justify-between p-3 rounded-xl border border-border text-foreground text-sm text-left hover:bg-secondary/50 transition-colors group"
-                      >
-                        <span className="flex-1 mr-3">{reply}</span>
-                        {copiedIndex === i ? (
-                          <Check className="w-4 h-4 shrink-0 text-green-400" />
-                        ) : (
-                          <Copy className="w-4 h-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              </>
-            )}
+            <PlaybookSection
+              playbook={analysisData.playbook}
+              suggestedReplies={analysisData.suggestedReplies}
+            />
 
             {/* Cultural Notes */}
             {analysisData.culturalNotes && (

@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Copy, Check } from "lucide-react";
 import { motion, useMotionValue, useTransform, useAnimation, PanInfo } from "framer-motion";
 import { useCallback, useRef, useState, useEffect } from "react";
+import WordLabCard from "@/components/WordLabCard";
 import { toast } from "sonner";
 
 const SNAP_POINTS = { expanded: 0.1, mid: 0.4, minimized: 0.6 };
@@ -167,37 +168,25 @@ const Results = () => {
             <div className="h-px bg-border mb-5" />
 
             {/* Word Lab */}
-            {analysisData.slangTerms?.length > 0 && (
-              <>
-                <section className="mb-5">
-                  <span className="text-base font-semibold text-foreground mb-3 block">Word Lab</span>
-                  <div className="flex flex-col gap-3">
-                    {analysisData.slangTerms.map((term: any, i: number) => (
-                      <div key={i} className="p-4 rounded-2xl bg-secondary">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-semibold text-foreground">"{term.term}"</span>
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full ${
-                              term.vibeCheck === "positive"
-                                ? "bg-green-500/20 text-green-400"
-                                : term.vibeCheck === "negative"
-                                ? "bg-red-500/20 text-red-400"
-                                : term.vibeCheck === "sarcastic"
-                                ? "bg-yellow-500/20 text-yellow-400"
-                                : "bg-white/10 text-white/60"
-                            }`}
-                          >
-                            {term.vibeCheck}
-                          </span>
+            {(() => {
+              const wordLabItems = (analysisData.wordLab || analysisData.slangTerms || []).slice(0, 3);
+              if (!wordLabItems.length) return null;
+              return (
+                <>
+                  <section className="mb-5">
+                    <span className="text-base font-semibold text-foreground mb-3 block">Word Lab</span>
+                    <div className="flex flex-col gap-5">
+                      {wordLabItems.map((term: any, i: number) => (
+                        <div key={i} className="p-4 rounded-2xl bg-secondary">
+                          <WordLabCard term={term} />
                         </div>
-                        <p className="text-sm text-muted-foreground">{term.meaning}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-                <div className="h-px bg-border mb-5" />
-              </>
-            )}
+                      ))}
+                    </div>
+                  </section>
+                  <div className="h-px bg-border mb-5" />
+                </>
+              );
+            })()}
 
             {/* Playbook */}
             {analysisData.suggestedReplies?.length > 0 && (

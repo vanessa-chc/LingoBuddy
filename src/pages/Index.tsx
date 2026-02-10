@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, Plus, Upload, Clipboard } from "lucide-react";
+import { toast } from "sonner";
 import UploadActionSheet from "@/components/UploadActionSheet";
 
 const ACCEPTED_TYPES = "image/png,image/jpeg,image/heic";
@@ -84,32 +85,32 @@ const Index = () => {
           </button>
         </header>
 
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col px-5 pt-6 pb-8">
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-foreground">
-            What did you find, Alex?
-          </h1>
-          <p className="mt-2 text-base text-muted-foreground">
-            Show Leon what's confusing
-          </p>
+      {/* Main Content */}
+        <main className="flex-1 flex flex-col px-5 pb-8">
+          <div className="pt-[60px]">
+            <h1 className="text-[28px] font-bold leading-tight tracking-tight text-foreground">
+              What did you find, Alex?
+            </h1>
+            <p className="mt-2 text-base text-muted-foreground">
+              Show Leon what's confusing
+            </p>
+          </div>
 
           {/* Upload Zone */}
-          <div className="mt-8 flex-1 flex flex-col">
+          <div className="mt-10 flex flex-col items-center">
             <div
               onClick={() => setSheetOpen(true)}
-              className="flex-1 min-h-[240px] rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-primary/40 transition-colors"
+              className="w-full min-h-[500px] rounded-[16px] border-2 border-dashed border-[rgba(255,255,255,0.15)] bg-[#2A2A2E] flex flex-col items-center justify-center py-20 cursor-pointer active:scale-[0.98] transition-transform"
             >
-              <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center">
-                <Upload className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <span className="text-base text-muted-foreground">
+              <Upload className="w-20 h-20 text-[#ECFF51]" strokeWidth={1.5} />
+              <span className="mt-4 text-[17px] text-[rgba(255,255,255,0.7)]">
                 Upload a screenshot
               </span>
             </div>
 
             <button
-              onClick={handlePaste}
-              className="mt-4 mx-auto flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+              onClick={() => toast("Coming soon in full version")}
+              className="mt-4 text-[15px] text-[#ECFF51] bg-transparent border-none flex items-center gap-2"
             >
               <Clipboard className="w-4 h-4" />
               Paste from clipboard

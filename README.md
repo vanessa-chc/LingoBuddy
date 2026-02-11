@@ -8,9 +8,9 @@ LingoBuddy leverages generative AI to help international students understand and
 ### 🛠 Tech Stack & AI Toolkit
 - **Design:** Figma (High-fidelity prototyping)
 - **Development:** [Lovable](https://lovable.dev/) & [Cursor](https://cursor.sh/) (AI-native coding)
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui
-- **Backend:** [Supabase](https://supabase.com/) (Authentication & Relational Database)
-- **AI Engine:** OpenAI/Gemini API for contextualized decoding of social nuances.
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui, Framer Motion
+- **AI:** Gemini API (client-side) for vibe check, word lab, and playbook replies
+- **Backend (planned):** Supabase for analysis history (no login in current MVP)
 
 ### 🎓 Learning Design Principles
 As a **CMU METALS** student, I integrated evidence-based learning science into the product logic:
@@ -19,10 +19,22 @@ As a **CMU METALS** student, I integrated evidence-based learning science into t
 - **Facilitating Knowledge Transfer:** Helping learners apply formal linguistic knowledge to informal, real-world conversational contexts through immediate AI-powered feedback.
 - **Adaptive Personalization (Vision):** Future iterations focus on tailoring content based on the user's specific cultural background and professional goals.
 
+### 📍 Current version (MVP scope)
+- **No login.** Use the app immediately: upload a chat screenshot, pick context (Friend / Work / Dating / Formal), and get Leon’s take.
+- **Flow:** Home → Upload (photo library, camera, or files) → Analyze (context + Gemini) → Results (Vibe Check, Word Lab, Playbook).
+- **Playbook:** Three reply types (Vibe Match, Stay Chill, Keep it Real). Customization accordion lets you switch tone (Witty, Sincere, Formal); only the replies refetch, not Vibe Check or Word Lab.
+- **New chat +** on Results returns to home. Analysis history (e.g. via Supabase) is planned for a later release.
+
 ### 💻 Local Development
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Start the dev server: `npm run dev`
+1. Clone the repository.
+2. Add a `.env` file with:
+   - `VITE_GEMINI_API_KEY` — required for analysis ([Google AI Studio](https://aistudio.google.com/apikey)).
+   - `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` — optional for now; used when we add analysis history.
+3. Install dependencies: `npm install`
+4. Start the dev server: `npm run dev`
+
+### 🔌 Supabase (future)
+Supabase is wired in the repo for **analysis history** (no auth in this MVP). When we add it: store each analysis (context, vibe check, word lab, playbook) so users can revisit past “Leon’s Take” sessions.
 
 ---
 **[Vanessa Chang](https://www.linkedin.com/in/vanessa-chc/)** | [View Case Study](https://www.vanessachangux.com/projects/lingo-buddy?utm_source=github&utm_medium=social&utm_campaign=lingobuddy-readme)

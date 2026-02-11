@@ -1,7 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, Plus, Upload, Clipboard } from "lucide-react";
-import { toast } from "sonner";
+import { Menu } from "lucide-react";
 import UploadActionSheet from "@/components/UploadActionSheet";
 
 const ACCEPTED_TYPES = "image/png,image/jpeg,image/heic";
@@ -72,48 +71,72 @@ const Index = () => {
     }}, [navigateToAnalyze]);
 
   return (
-    <div className="min-h-screen bg-background flex justify-center">
+    <div className="min-h-screen bg-[#121212] flex justify-center">
       <div className="w-full max-w-[430px] flex flex-col min-h-screen">
-        {/* Header */}
-        <header className="flex items-center justify-between px-5 pt-4 pb-2">
-          <button className="p-2 -ml-2 text-foreground" aria-label="Menu">
+        {/* Header — hamburger only, Figma layout */}
+        <header className="flex items-center px-5 pt-6 pb-2">
+          <button className="p-2 -ml-2 text-white" aria-label="Menu">
             <Menu className="w-6 h-6" />
-          </button>
-          <button className="flex items-center gap-1.5 text-sm font-medium text-foreground px-3 py-1.5 rounded-full border border-border">
-            <Plus className="w-4 h-4" />
-            New chat
           </button>
         </header>
 
-      {/* Main Content */}
+        {/* Main Content */}
         <main className="flex-1 flex flex-col px-5 pb-8">
-          <div className="pt-[60px]">
-            <h1 className="font-bold leading-tight tracking-tight text-foreground text-3xl">
-              What did you find, Alex?
+          <div className="pt-2">
+            <h1 className="font-bold leading-[1.2] tracking-tight text-white text-[32px]">
+              What did you find, Vanessa?
             </h1>
-            <p className="mt-2 text-base text-muted-foreground">
-              Show Leon what's confusing
+            <p className="mt-3 text-[17px] text-[#AAAAAA]">
+              Show Leon what&apos;s confusing
             </p>
           </div>
 
-          {/* Upload Zone */}
-          <div className="mt-10 flex flex-col items-center">
+          {/* Upload Zone — card #2E2E2E, 16–24px radius, gradient icon */}
+          <div className="mt-10 flex flex-col items-center flex-1">
             <div
               onClick={() => setSheetOpen(true)}
-              className="w-full min-h-[500px] rounded-[16px] border-2 border-dashed border-[rgba(255,255,255,0.15)] bg-[#2A2A2E] flex flex-col items-center justify-center py-20 cursor-pointer active:scale-[0.98] transition-transform">
-
-              <Upload className="w-20 h-20 text-[#ECFF51]" strokeWidth={1.5} />
-              <span className="mt-4 text-[17px] text-[rgba(255,255,255,0.7)]">
+              className="w-full min-h-[320px] rounded-[20px] bg-[#2E2E2E] flex flex-col items-center justify-center py-16 cursor-pointer active:scale-[0.98] transition-transform"
+            >
+              <svg
+                className="w-20 h-20 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                stroke="url(#upload-icon-gradient)"
+              >
+                <defs>
+                  <linearGradient id="upload-icon-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#B8FF00" />
+                    <stop offset="100%" stopColor="#00FF00" />
+                  </linearGradient>
+                </defs>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <span className="mt-4 text-[17px] text-white font-normal">
                 Upload a screenshot
               </span>
             </div>
 
             <button
-              onClick={() => toast("Coming soon in full version")}
-              className="mt-4 text-[15px] text-[#ECFF51] bg-transparent border-none flex items-center gap-2">
-
-              <Clipboard className="w-4 h-4" />
+              type="button"
+              className="mt-5 text-[15px] text-[#AAAAAA] bg-transparent border-none cursor-pointer hover:text-white/90 transition-colors"
+            >
               Paste from clipboard
+            </button>
+
+            <div className="flex-1 min-h-[24px]" aria-hidden />
+
+            {/* Analyze button — disabled, no toast */}
+            <button
+              type="button"
+              disabled
+              className="w-full py-4 rounded-[14px] bg-[#3C3C3C] text-white text-[18px] font-semibold cursor-not-allowed opacity-60"
+            >
+              Analyze
             </button>
           </div>
 
@@ -123,8 +146,8 @@ const Index = () => {
             type="file"
             accept={ACCEPTED_TYPES}
             className="hidden"
-            onChange={handleFileChange} />
-
+            onChange={handleFileChange}
+          />
         </main>
       </div>
 

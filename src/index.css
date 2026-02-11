@@ -4,7 +4,8 @@
 
 @layer base {
   :root {
-    --background: 240 4% 7%;
+    /* Figma: main background ~#121212 */
+    --background: 0 0% 7%;
     --foreground: 0 0% 100%;
 
     --card: 240 4% 10%;

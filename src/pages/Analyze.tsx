@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { analyzeScreenshot } from "@/lib/gemini";
 import ScreenshotPreview from "@/components/ScreenshotPreview";
 
 const CONTEXTS = [
@@ -29,22 +29,17 @@ const Analyze = () => {
     abortRef.current = new AbortController();
 
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-screenshot", {
-        body: { imageBase64: imageData, context: selectedContext }
-      });
+      const relationshipLabel = CONTEXTS.find((c) => c.value === selectedContext)?.label ?? selectedContext;
+      const analysisData = await analyzeScreenshot(
+        imageData,
+        relationshipLabel,
+        abortRef.current.signal
+      );
 
       if (abortRef.current?.signal.aborted) return;
 
-      if (error) {
-        throw new Error(error.message || "Analysis failed");
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
       navigate("/results", {
-        state: { analysisData: data, imageData, context: selectedContext }
+        state: { analysisData, imageData, context: selectedContext, relationshipLabel }
       });
     } catch (e: any) {
       if (e?.name === "AbortError" || abortRef.current?.signal.aborted) return;
@@ -59,90 +54,91 @@ const Analyze = () => {
     setIsAnalyzing(false);
   }, []);
 
-  // Scanning overlay
+  // Scanning overlay — title (same size as "Got it! Ready to scan?"), image (no glow), context text, Cancel only
   if (isAnalyzing) {
     return (
-      <div className="min-h-screen bg-background flex justify-center">
-        <div className="w-full max-w-[430px] flex flex-col min-h-screen items-center px-5">
-          {/* Title at TOP */}
-          <p
-            className="text-center font-bold text-foreground"
-            style={{ marginTop: 80, fontSize: 28, letterSpacing: -0.5 }}>
-            Scanning the vibe...
-          </p>
+      <div className="min-h-screen bg-[#121212] flex justify-center">
+        <div className="w-full max-w-[430px] flex flex-col min-h-screen px-5">
+          <header className="flex items-center pt-6 pb-2">
+            <button type="button" className="p-2 -ml-2 text-white" aria-label="Menu">
+              <Menu className="w-6 h-6" />
+            </button>
+          </header>
 
-          {/* Image with scan line */}
+          {/* Title — same large font as "Got it! Ready to scan?", left-aligned */}
+          <h1
+            className="text-left font-bold leading-tight tracking-tight text-white pt-2"
+            style={{ fontSize: 32 }}
+          >
+            Scanning the vibe...
+          </h1>
+
+          {/* Image — same size as upload step, no green glow; scan line animation only */}
           {imageData && (
-            <div style={{ marginTop: 40 }}>
+            <div className="mt-6">
               <ScreenshotPreview
                 src={imageData}
                 alt="Scanning"
                 overlay={
                   <div
-                    className="absolute left-0 right-0 h-[3px] animate-scan-line"
-                    style={{ background: "linear-gradient(90deg, transparent, #ECFF51, transparent)", boxShadow: "0 0 12px rgba(236,255,81,0.6)" }}
+                    className="absolute left-0 right-0 h-[3px] animate-scan-line pointer-events-none"
+                    style={{
+                      background: "linear-gradient(90deg, transparent, #B8FF00, transparent)",
+                      boxShadow: "0 0 12px rgba(184, 255, 0, 0.6)",
+                    }}
                   />
                 }
               />
             </div>
           )}
 
-          {/* Context label */}
-          <p className="text-center" style={{ marginTop: 24, fontSize: 17, color: "rgba(255,255,255,0.7)" }}>
+          {/* Dynamic: Chatting with [selected context] */}
+          <p className="text-center text-white mt-6" style={{ fontSize: 17 }}>
             Chatting with{" "}
-            <span style={{ color: "#ECFF51" }}>
-              {selectedContext ? selectedContext.charAt(0).toUpperCase() + selectedContext.slice(1) : ""}
+            <span className="text-[#ECFF51] font-medium">
+              {selectedContext ? CONTEXTS.find((c) => c.value === selectedContext)?.label ?? selectedContext.charAt(0).toUpperCase() + selectedContext.slice(1) : ""}
             </span>
           </p>
 
-          {/* Spacer to push cancel to bottom */}
           <div className="flex-1" />
 
-          {/* Cancel button at bottom */}
+          {/* Cancel — Figma: large rounded-rectangle, dark grey, white text, generous padding */}
           <button
+            type="button"
             onClick={handleCancel}
-            className="font-semibold transition-colors active:scale-[0.97]"
-            style={{
-              marginBottom: 40,
-              width: "calc(100% - 80px)",
-              height: 56,
-              borderRadius: 20,
-              background: "rgba(255,255,255,0.1)",
-              color: "#FFFFFF",
-              border: "1px solid rgba(255,255,255,0.2)",
-              fontSize: 17
-            }}>
+            className="w-full py-4 rounded-2xl font-semibold text-white bg-[#2E2E2E] active:opacity-90 transition-opacity mb-10 text-[17px]"
+          >
             Cancel
           </button>
         </div>
-      </div>);
-
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen w-screen max-w-[100vw] overflow-x-hidden bg-background flex justify-center box-border">
+    <div className="min-h-screen w-screen max-w-[100vw] overflow-x-hidden bg-[#121212] flex justify-center box-border">
       <div className="w-full max-w-[430px] flex flex-col min-h-screen px-5">
-        {/* Header */}
-        <header className="flex items-center pt-4 pb-2 -mx-0 px-[20px] gap-[4px]">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 -ml-2 text-foreground"
-            aria-label="Back">
-
-            <ArrowLeft className="w-6 h-6" />
+        {/* Header: hamburger only; close is on the image overlay */}
+        <header className="flex items-center pt-6 pb-2">
+          <button className="p-2 -ml-2 text-white" aria-label="Menu">
+            <Menu className="w-6 h-6" />
           </button>
-          <span className="text-lg font-semibold text-foreground">Add Context</span>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 flex-col pb-[100px] flex items-center justify-start">
+        <main className="flex-1 flex flex-col pb-28">
+          {/* Main heading — Figma: large, bold, left-aligned */}
+          <h1 className="text-[32px] font-bold leading-tight tracking-tight text-white pt-2">
+            Got it! Ready to scan?
+          </h1>
+
           {/* Screenshot Preview */}
           {imageData && (
-            <div className="mt-[60px] mb-[24px]">
+            <div className="mt-6 mb-6">
               <ScreenshotPreview src={imageData} alt="Uploaded screenshot">
                 <button
                   onClick={() => navigate("/")}
-                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-foreground active:bg-white/25 transition-colors"
+                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-white active:bg-white/25 transition-colors"
                   aria-label="Remove image"
                 >
                   <X className="w-5 h-5" />
@@ -150,61 +146,40 @@ const Analyze = () => {
               </ScreenshotPreview>
             </div>
           )}
+        </main>
 
-          {/* Context Label */}
-          <p
-            className="text-left"
-            style={{ marginTop: 32, marginBottom: 16, fontSize: 17, color: "rgba(255,255,255,0.7)" }}>
-
+        {/* Context pills — fixed 24px above Analyze button, single row */}
+        <div className="fixed bottom-[104px] left-5 right-5 z-10 max-w-[390px] mx-auto">
+          <p className="text-[17px] text-white/70 mb-2">
             Chatting with...
           </p>
-
-          {/* Context Pills */}
-          <div
-            className="overflow-x-auto overflow-y-hidden pb-1 flex-row flex items-center justify-center gap-[4px] px-0 mx-0"
-            style={{ gap: 12, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-
+          <div className="flex flex-nowrap gap-2 overflow-x-auto">
             {CONTEXTS.map((ctx) => {
               const isSelected = selectedContext === ctx.value;
               return (
                 <button
                   key={ctx.value}
                   onClick={() => setSelectedContext(ctx.value)}
-                  className="shrink-0 font-semibold whitespace-nowrap transition-colors"
-                  style={{
-                    padding: "12px 24px",
-                    borderRadius: 24,
-                    fontSize: 17,
-                    border: isSelected ?
-                    "2px solid hsl(var(--cta))" :
-                    "1px solid rgba(255,255,255,0.15)",
-                    background: isSelected ? "hsl(var(--cta))" : "transparent",
-                    color: isSelected ?
-                    "hsl(var(--cta-foreground))" :
-                    "rgba(255,255,255,0.7)"
-                  }}>
-
+                  className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-[15px] border transition-colors ${
+                    isSelected
+                      ? "bg-[#505050] border-white/20 text-white font-bold"
+                      : "bg-[#2C2C2C] border-white/15 text-white font-normal"
+                  }`}
+                >
                   {ctx.label}
-                </button>);
-
+                </button>
+              );
             })}
           </div>
-        </main>
+        </div>
 
-        {/* Fixed Analyze Button */}
-        <div className="fixed bottom-6 left-5 right-5 z-10" style={{ maxWidth: "calc(430px - 40px)", margin: "0 auto" }}>
+        {/* Fixed Analyze Button — lime-green gradient, 24px from bottom */}
+        <div className="fixed bottom-6 left-5 right-5 z-10 max-w-[390px] mx-auto">
           <button
             disabled={!selectedContext}
             onClick={handleAnalyze}
-            className="w-full font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              height: 56,
-              borderRadius: 20,
-              fontSize: 17,
-              background: "hsl(var(--cta))",
-              color: "hsl(var(--cta-foreground))"
-            }}>
-
+            className="w-full h-14 rounded-3xl bg-gradient-to-r from-[#AAFF00] to-[#00FF00] text-white text-xl font-bold disabled:opacity-40 disabled:cursor-not-allowed active:opacity-90 transition-opacity"
+          >
             Analyze
           </button>
         </div>

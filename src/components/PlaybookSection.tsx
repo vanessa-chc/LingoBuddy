@@ -1,42 +1,72 @@
-import { FC, useState, useCallback } from "react";
+import { FC, useState, useCallback, useEffect, useRef } from "react";
 import { Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const INTENTS = ["Witty", "Sincere", "Formal"] as const;
-type Intent = (typeof INTENTS)[number];
+const CHAMELEON_AVATAR = "/assets/ChameleonAvatar.png";
+
+/** Presets hidden initially; only affect content when user selects from customization accordion */
+const PRESETS = ["Witty", "Sincere", "Formal"] as const;
+type Preset = (typeof PRESETS)[number];
 
 interface PlaybookReply {
   intent?: string;
   text: string;
 }
 
+interface PRDPlaybookEntry {
+  intent: string;
+  reply: string;
+}
+
 interface PlaybookData {
   replies?: PlaybookReply[];
+  vibeMatch?: PRDPlaybookEntry;
+  safeChill?: PRDPlaybookEntry;
+  sincere?: PRDPlaybookEntry;
 }
 
 interface PlaybookSectionProps {
-  playbook?: PlaybookData;
-  suggestedReplies?: string[];
+  playbook?: PlaybookData | null;
+  /** When user selects/deselects a preset, parent can refetch and pass new playbook */
+  onPresetChange?: (preset: string | null) => void;
+  isPresetLoading?: boolean;
 }
 
-const PlaybookSection: FC<PlaybookSectionProps> = ({ playbook, suggestedReplies }) => {
+/** Static category labels — never change to preset names */
+const STATIC_CATEGORIES: { key: "vibeMatch" | "safeChill" | "sincere"; label: string }[] = [
+  { key: "vibeMatch", label: "Vibe Match (Recommended)" },
+  { key: "safeChill", label: "Stay Chill" },
+  { key: "sincere", label: "Keep it Real" },
+];
+
+function getRepliesByCategory(playbook: PlaybookData | null | undefined): { label: string; text: string }[] {
+  if (!playbook) return STATIC_CATEGORIES.map((c) => ({ label: c.label, text: "" }));
+  return STATIC_CATEGORIES.map((c) => {
+    const entry = playbook[c.key];
+    return { label: c.label, text: entry?.reply ?? "" };
+  });
+}
+
+const PlaybookSection: FC<PlaybookSectionProps> = ({ playbook, onPresetChange, isPresetLoading }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedIntent, setSelectedIntent] = useState<Intent>("Witty");
+  const [selectedPreset, setSelectedPreset] = useState<Preset | null>(null);
   const [emojisOn, setEmojisOn] = useState(true);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [justUpdated, setJustUpdated] = useState(false);
+  const wasLoadingRef = useRef(false);
 
-  // Build replies from playbook or fallback to suggestedReplies
-  const allReplies: PlaybookReply[] = playbook?.replies?.length
-    ? playbook.replies
-    : (suggestedReplies || []).map((text) => ({ text, intent: "Witty" }));
+  const categoryReplies = getRepliesByCategory(playbook);
 
-  const filteredReplies = allReplies
-    .filter((r) => !r.intent || r.intent.toLowerCase() === selectedIntent.toLowerCase())
-    .slice(0, 3);
-
-  // If no replies match the filter, show all (max 3)
-  const displayReplies = filteredReplies.length > 0 ? filteredReplies : allReplies.slice(0, 3);
+  // When loading finishes (true → false), briefly set justUpdated for reply-card animation
+  useEffect(() => {
+    if (wasLoadingRef.current && !isPresetLoading) {
+      setJustUpdated(true);
+      const t = setTimeout(() => setJustUpdated(false), 400);
+      return () => clearTimeout(t);
+    }
+    wasLoadingRef.current = isPresetLoading;
+  }, [isPresetLoading]);
 
   const formatReply = (text: string) => {
     if (!emojisOn) return text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, "").trim();
@@ -52,28 +82,26 @@ const PlaybookSection: FC<PlaybookSectionProps> = ({ playbook, suggestedReplies 
 
   return (
     <section className="mb-5">
-      {/* Header */}
+      {/* Header — Playbook bold, settings icon only */}
       <div className="flex items-center justify-between mb-3">
-        <span className="font-semibold text-foreground" style={{ fontSize: 22 }}>
-          Playbook
-        </span>
+        <span className="text-[17px] font-bold text-white">Playbook</span>
         <button
+          type="button"
           onClick={() => setSettingsOpen((v) => !v)}
           className="p-1.5 rounded-lg transition-colors"
           aria-label="Playbook settings"
         >
-          <Settings
-            className="transition-all duration-300"
-            size={24}
-            style={{
-              color: settingsOpen ? "hsl(var(--cta))" : "hsl(var(--muted-foreground))",
-              transform: settingsOpen ? "rotate(90deg)" : "rotate(0deg)",
-            }}
-          />
+            <Settings
+              className="transition-all duration-300"
+              size={20}
+              style={{
+                color: settingsOpen ? "#9DFF50" : "rgba(255,255,255,0.7)",
+                transform: settingsOpen ? "rotate(90deg)" : "rotate(0deg)",
+              }}
+            />
         </button>
       </div>
 
-      {/* Collapsible settings */}
       <AnimatePresence>
         {settingsOpen && (
           <motion.div
@@ -84,40 +112,42 @@ const PlaybookSection: FC<PlaybookSectionProps> = ({ playbook, suggestedReplies 
             className="overflow-hidden"
           >
             <div className="pb-4 flex flex-col gap-3">
-              {/* Intent pills */}
               <div className="flex gap-2">
-                {INTENTS.map((intent) => {
-                  const isSelected = selectedIntent === intent;
+                {PRESETS.map((preset) => {
+                  const isSelected = selectedPreset === preset;
                   return (
                     <button
-                      key={intent}
-                      onClick={() => setSelectedIntent(intent)}
-                      className="shrink-0 font-semibold transition-colors"
+                      key={preset}
+                      type="button"
+                      disabled={isPresetLoading}
+                      onClick={() => {
+                        const newPreset = isSelected ? null : preset;
+                        setSelectedPreset(newPreset);
+                        onPresetChange?.(newPreset);
+                      }}
+                      className="shrink-0 font-semibold transition-colors disabled:opacity-60"
                       style={{
                         padding: "10px 20px",
                         borderRadius: 24,
                         fontSize: 15,
-                        border: isSelected
-                          ? "2px solid hsl(var(--cta))"
-                          : "1px solid rgba(255,255,255,0.15)",
-                        background: isSelected ? "hsl(var(--cta))" : "transparent",
-                        color: isSelected ? "hsl(var(--cta-foreground))" : "hsl(var(--foreground))",
+                        border: isSelected ? "2px solid #9DFF50" : "1px solid rgba(255,255,255,0.15)",
+                        background: isSelected ? "#9DFF50" : "transparent",
+                        color: isSelected ? "#0D0D0D" : "#fff",
                       }}
                     >
-                      {intent}
+                      {preset}
                     </button>
                   );
                 })}
               </div>
-
-              {/* Emoji toggle */}
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Include emojis</span>
+                <span className="text-sm text-white/70">Include emojis</span>
                 <button
+                  type="button"
                   onClick={() => setEmojisOn((v) => !v)}
                   className="relative w-[51px] h-[31px] rounded-full transition-colors duration-300"
                   style={{
-                    background: emojisOn ? "hsl(var(--cta))" : "rgba(255,255,255,0.15)",
+                    background: emojisOn ? "#9DFF50" : "rgba(255,255,255,0.15)",
                   }}
                   aria-label="Toggle emojis"
                 >
@@ -133,34 +163,56 @@ const PlaybookSection: FC<PlaybookSectionProps> = ({ playbook, suggestedReplies 
         )}
       </AnimatePresence>
 
-      {/* Reply cards */}
-      <div className="flex flex-col gap-2">
-        {displayReplies.map((reply, i) => (
-          <button
-            key={`${selectedIntent}-${emojisOn}-${i}`}
-            onClick={() => copyReply(formatReply(reply.text), i)}
-            className="w-full text-left transition-colors active:scale-[0.98]"
-            style={{
-              background: "#2A2A2E",
-              borderRadius: 12,
-              padding: 16,
+      {/* When updating: reply cards show bubble-shaped skeleton only (no text) */}
+      <div className="flex flex-col gap-4">
+        {categoryReplies.map((item, i) => (
+          <motion.div
+            key={item.label}
+            initial={false}
+            animate={{
+              opacity: isPresetLoading ? 0.6 : 1,
+              transition: { duration: 0.2 },
             }}
+            transition={justUpdated ? { type: "tween", duration: 0.25 } : undefined}
           >
-            {reply.intent && (
-              <span className="block mb-1" style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
-                {reply.intent}
+            <p className="text-[13px] text-white/70 mb-1.5">{item.label}</p>
+            <button
+              type="button"
+              disabled={isPresetLoading}
+              onClick={() => copyReply(formatReply(item.text), i)}
+              className="w-full text-left transition-colors active:scale-[0.98] flex items-start gap-3 p-3 rounded-xl disabled:opacity-70"
+              style={{ background: "#2A2A2E" }}
+            >
+              {!isPresetLoading && (
+                <img
+                  src={CHAMELEON_AVATAR}
+                  alt=""
+                  className="shrink-0 rounded-full object-cover ring-2 ring-[#9DFF50]/40"
+                  style={{ width: 32, height: 32 }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              )}
+              <span className="text-white flex-1 min-h-[1.25em] flex flex-col gap-1.5" style={{ fontSize: 15 }}>
+                {isPresetLoading ? (
+                  <>
+                    <span className="inline-block w-full h-3 rounded bg-white/15 animate-pulse" />
+                    <span className="inline-block w-[85%] h-3 rounded bg-white/10 animate-pulse" />
+                  </>
+                ) : copiedIndex === i ? (
+                  "✓ Copied!"
+                ) : (
+                  formatReply(item.text)
+                )}
               </span>
-            )}
-            <span className="text-foreground" style={{ fontSize: 17 }}>
-              {copiedIndex === i ? "✓ Copied!" : formatReply(reply.text)}
-            </span>
-          </button>
+            </button>
+          </motion.div>
         ))}
       </div>
 
-      {/* Hint text when collapsed */}
       {!settingsOpen && (
-        <p className="mt-2 text-center" style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+        <p className="mt-2 text-center text-[13px] text-white/50">
           Tap ⚙️ to customize
         </p>
       )}

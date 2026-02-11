@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { useCallback, useRef, useState, useEffect } from "react";
 import WordLabCard from "@/components/WordLabCard";
 import PlaybookSection from "@/components/PlaybookSection";
+import ScreenshotPreview from "@/components/ScreenshotPreview";
 
 const SNAP_POINTS = { expanded: 0.1, mid: 0.35, collapsed: 0.6 };
 const SPRING = { transition: "transform 300ms ease-out" };
@@ -112,12 +113,8 @@ const Results = () => {
       <div className="w-full max-w-[430px] relative h-full">
         {/* Background: original screenshot - always visible */}
         {imageData && (
-          <div className="absolute inset-0 flex items-center justify-center p-6" style={{ opacity: 0.5 }}>
-            <img
-              src={imageData}
-              alt="Original screenshot"
-              className="max-w-full max-h-full object-contain rounded-xl"
-            />
+          <div className="absolute left-0 right-0 flex justify-center px-5" style={{ opacity: 0.5, top: 60 }}>
+            <ScreenshotPreview src={imageData} alt="Original screenshot" />
           </div>
         )}
 

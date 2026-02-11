@@ -7,12 +7,12 @@ import UploadActionSheet from "@/components/UploadActionSheet";
 const ACCEPTED_TYPES = "image/png,image/jpeg,image/heic";
 
 const fileToBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result as string);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 
 const Index = () => {
   const navigate = useNavigate();
@@ -67,9 +67,9 @@ const Index = () => {
         }
       }
     } catch {
+
       // Clipboard API not available or no image
-    }
-  }, [navigateToAnalyze]);
+    }}, [navigateToAnalyze]);
 
   return (
     <div className="min-h-screen bg-background flex justify-center">
@@ -88,7 +88,7 @@ const Index = () => {
       {/* Main Content */}
         <main className="flex-1 flex flex-col px-5 pb-8">
           <div className="pt-[60px]">
-            <h1 className="text-[28px] font-bold leading-tight tracking-tight text-foreground">
+            <h1 className="font-bold leading-tight tracking-tight text-foreground text-3xl">
               What did you find, Alex?
             </h1>
             <p className="mt-2 text-base text-muted-foreground">
@@ -100,8 +100,8 @@ const Index = () => {
           <div className="mt-10 flex flex-col items-center">
             <div
               onClick={() => setSheetOpen(true)}
-              className="w-full min-h-[500px] rounded-[16px] border-2 border-dashed border-[rgba(255,255,255,0.15)] bg-[#2A2A2E] flex flex-col items-center justify-center py-20 cursor-pointer active:scale-[0.98] transition-transform"
-            >
+              className="w-full min-h-[500px] rounded-[16px] border-2 border-dashed border-[rgba(255,255,255,0.15)] bg-[#2A2A2E] flex flex-col items-center justify-center py-20 cursor-pointer active:scale-[0.98] transition-transform">
+
               <Upload className="w-20 h-20 text-[#ECFF51]" strokeWidth={1.5} />
               <span className="mt-4 text-[17px] text-[rgba(255,255,255,0.7)]">
                 Upload a screenshot
@@ -110,8 +110,8 @@ const Index = () => {
 
             <button
               onClick={() => toast("Coming soon in full version")}
-              className="mt-4 text-[15px] text-[#ECFF51] bg-transparent border-none flex items-center gap-2"
-            >
+              className="mt-4 text-[15px] text-[#ECFF51] bg-transparent border-none flex items-center gap-2">
+
               <Clipboard className="w-4 h-4" />
               Paste from clipboard
             </button>
@@ -123,8 +123,8 @@ const Index = () => {
             type="file"
             accept={ACCEPTED_TYPES}
             className="hidden"
-            onChange={handleFileChange}
-          />
+            onChange={handleFileChange} />
+
         </main>
       </div>
 
@@ -132,10 +132,10 @@ const Index = () => {
       <UploadActionSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        onSelectSource={handleSelectSource}
-      />
-    </div>
-  );
+        onSelectSource={handleSelectSource} />
+
+    </div>);
+
 };
 
 export default Index;

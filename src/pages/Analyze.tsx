@@ -5,11 +5,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const CONTEXTS = [
-  { value: "friend", label: "Friend" },
-  { value: "work", label: "Work" },
-  { value: "dating", label: "Dating" },
-  { value: "formal", label: "Formal" },
-] as const;
+{ value: "friend", label: "Friend" },
+{ value: "work", label: "Work" },
+{ value: "dating", label: "Dating" },
+{ value: "formal", label: "Formal" }] as
+const;
 
 type ContextValue = (typeof CONTEXTS)[number]["value"];
 
@@ -29,7 +29,7 @@ const Analyze = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("analyze-screenshot", {
-        body: { imageBase64: imageData, context: selectedContext },
+        body: { imageBase64: imageData, context: selectedContext }
       });
 
       if (abortRef.current?.signal.aborted) return;
@@ -43,7 +43,7 @@ const Analyze = () => {
       }
 
       navigate("/results", {
-        state: { analysisData: data, imageData, context: selectedContext },
+        state: { analysisData: data, imageData, context: selectedContext }
       });
     } catch (e: any) {
       if (e?.name === "AbortError" || abortRef.current?.signal.aborted) return;
@@ -65,19 +65,19 @@ const Analyze = () => {
         <div className="w-full max-w-[430px] flex flex-col min-h-screen items-center justify-center px-5">
           {/* Image with scan line */}
           <div className="relative w-full max-w-[300px] overflow-hidden rounded-xl">
-            {imageData && (
-              <img
-                src={imageData}
-                alt="Scanning"
-                className="w-full object-contain rounded-xl"
-                style={{ boxShadow: "0px 4px 20px rgba(0,0,0,0.3)" }}
-              />
-            )}
+            {imageData &&
+            <img
+              src={imageData}
+              alt="Scanning"
+              className="w-full object-contain rounded-xl"
+              style={{ boxShadow: "0px 4px 20px rgba(0,0,0,0.3)" }} />
+
+            }
             {/* Animated scan line */}
             <div
               className="absolute left-0 right-0 h-[3px] animate-scan-line"
-              style={{ background: "hsl(var(--cta))", boxShadow: "0 0 12px hsl(var(--cta) / 0.6)" }}
-            />
+              style={{ background: "hsl(var(--cta))", boxShadow: "0 0 12px hsl(var(--cta) / 0.6)" }} />
+
           </div>
 
           <p className="mt-6 text-lg font-semibold text-foreground">Scanning the vibe...</p>
@@ -87,25 +87,25 @@ const Analyze = () => {
 
           <button
             onClick={handleCancel}
-            className="mt-8 px-6 py-3 rounded-full border border-border text-foreground text-sm font-medium hover:bg-secondary transition-colors"
-          >
+            className="mt-8 px-6 py-3 rounded-full border border-border text-foreground text-sm font-medium hover:bg-secondary transition-colors">
+
             Cancel
           </button>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
     <div className="min-h-screen w-screen max-w-[100vw] overflow-x-hidden bg-background flex justify-center box-border">
       <div className="w-full max-w-[430px] flex flex-col min-h-screen px-5">
         {/* Header */}
-        <header className="flex items-center gap-3 pt-4 pb-2 -mx-0">
+        <header className="flex items-center pt-4 pb-2 -mx-0 px-[20px] gap-[4px]">
           <button
             onClick={() => navigate("/")}
             className="p-2 -ml-2 text-foreground"
-            aria-label="Back"
-          >
+            aria-label="Back">
+
             <ArrowLeft className="w-6 h-6" />
           </button>
           <span className="text-lg font-semibold text-foreground">Add Context</span>
@@ -114,40 +114,40 @@ const Analyze = () => {
         {/* Main Content */}
         <main className="flex-1 flex flex-col pb-[100px]">
           {/* Screenshot Preview */}
-          {imageData && (
-            <div className="relative mt-6 mx-auto w-full">
+          {imageData &&
+          <div className="relative mt-6 mx-auto w-full">
               <img
-                src={imageData}
-                alt="Uploaded screenshot"
-                className="block w-full max-h-[400px] object-contain mx-auto"
-                style={{
-                  borderRadius: 12,
-                  boxShadow: "0px 4px 20px rgba(0,0,0,0.3)",
-                }}
-              />
+              src={imageData}
+              alt="Uploaded screenshot"
+              className="block w-full max-h-[400px] object-contain mx-auto"
+              style={{
+                borderRadius: 12,
+                boxShadow: "0px 4px 20px rgba(0,0,0,0.3)"
+              }} />
+
               <button
-                onClick={() => navigate("/")}
-                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-foreground active:bg-white/25 transition-colors"
-                aria-label="Remove image"
-              >
+              onClick={() => navigate("/")}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-foreground active:bg-white/25 transition-colors"
+              aria-label="Remove image">
+
                 <X className="w-5 h-5" />
               </button>
             </div>
-          )}
+          }
 
           {/* Context Label */}
           <p
             className="text-left"
-            style={{ marginTop: 32, marginBottom: 16, fontSize: 17, color: "rgba(255,255,255,0.7)" }}
-          >
+            style={{ marginTop: 32, marginBottom: 16, fontSize: 17, color: "rgba(255,255,255,0.7)" }}>
+
             Chatting with...
           </p>
 
           {/* Context Pills */}
           <div
-            className="flex overflow-x-auto overflow-y-hidden -mx-5 px-5 pb-1"
-            style={{ gap: 12, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
-          >
+            className="overflow-x-auto overflow-y-hidden pb-1 mx-0 px-0 items-center justify-start gap-[8px] flex flex-row"
+            style={{ gap: 12, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+
             {CONTEXTS.map((ctx) => {
               const isSelected = selectedContext === ctx.value;
               return (
@@ -159,18 +159,18 @@ const Analyze = () => {
                     padding: "12px 24px",
                     borderRadius: 24,
                     fontSize: 17,
-                    border: isSelected
-                      ? "2px solid hsl(var(--cta))"
-                      : "1px solid rgba(255,255,255,0.15)",
+                    border: isSelected ?
+                    "2px solid hsl(var(--cta))" :
+                    "1px solid rgba(255,255,255,0.15)",
                     background: isSelected ? "hsl(var(--cta))" : "transparent",
-                    color: isSelected
-                      ? "hsl(var(--cta-foreground))"
-                      : "rgba(255,255,255,0.7)",
-                  }}
-                >
+                    color: isSelected ?
+                    "hsl(var(--cta-foreground))" :
+                    "rgba(255,255,255,0.7)"
+                  }}>
+
                   {ctx.label}
-                </button>
-              );
+                </button>);
+
             })}
           </div>
         </main>
@@ -186,15 +186,15 @@ const Analyze = () => {
               borderRadius: 20,
               fontSize: 17,
               background: "hsl(var(--cta))",
-              color: "hsl(var(--cta-foreground))",
-            }}
-          >
+              color: "hsl(var(--cta-foreground))"
+            }}>
+
             Analyze
           </button>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default Analyze;

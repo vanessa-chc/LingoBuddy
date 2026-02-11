@@ -1,46 +1,111 @@
+# Consistent Image Preview Across Pages
+
+## Problem
+
+The screenshot preview appears at different sizes and positions on `/analyze`, the scanning overlay, and `/results`, causing visual "jumping" during page transitions.
+
+## Current State
 
 
-# Fix Auto-Navigation and Analyze Page Layout
+| Page             | Image Top Offset                 | Image Width         | Max Height    |
+| ---------------- | -------------------------------- | ------------------- | ------------- |
+| `/analyze`       | ~108px (header + 60px margin)    | 100% - 40px padding | 400px         |
+| Scanning overlay | ~156px (80px + title + 40px)     | calc(100% - 80px)   | 400px         |
+| `/results`       | Vertically centered (background) | 100% - 48px padding | Unconstrained |
 
-## Issue 1: Auto-Navigate After Upload
 
-### Changes to `src/pages/Index.tsx`
-- Modify `handleFileChange` to navigate to `/analyze` immediately after converting the file to base64, instead of setting local state
-- Modify `handlePaste` to navigate to `/analyze` immediately after reading the clipboard image
-- Remove the image preview state and UI (the preview will now live only on `/analyze`)
-- Remove the "Analyze" button entirely
-- Remove the X-button removal logic (no longer needed on home page)
-- Keep the upload zone, action sheet, clipboard link, and file input as-is
+## Solution
 
-### Changes to `src/components/UploadActionSheet.tsx`
-- No changes needed
+Create a shared `ScreenshotPreview` component with fixed, consistent styling used by all three views. Anchor the image to the same position and size everywhere.
 
-## Issue 2: Analyze Page Layout Fixes
+### Shared Constants (matching the `/analyze` page style)
 
-### Changes to `src/pages/Analyze.tsx`
+- **Top offset**: Fixed at a consistent value from the top of the 430px container
+- **Width**: calc(100% - 40px), centered
+- **Max height**: 450px
+- **Border radius**: 12px
+- **Box shadow**: 0px 4px 20px rgba(0,0,0,0.3)
+- **Object-fit**: contain
 
-**Screenshot preview:**
-- Max-height 400px, centered, border-radius 12px
-- Add shadow: `0px 4px 20px rgba(0,0,0,0.3)`
-- Add X button (top-right): 32x32px circle with white 15% background
-- When X is tapped, navigate back to `/` (since we no longer store state on home page)
+### Changes by File
 
-**"Chatting with..." label:**
-- Change "Who sent this?" to "Chatting with..."
-- margin-top 24px from screenshot
-- Font size 17px, white at 70% opacity, left-aligned
+**1. New: `src/components/ScreenshotPreview.tsx**`
 
-**Context pills:**
-- Wrap in a horizontal overflow-x-auto scroll container
-- Gap 12px between pills
-- Each pill: padding 12px 24px, border-radius 24px, font 17px semibold
-- Unselected: transparent background, 1px solid border at `rgba(255,255,255,0.15)`
-- Selected: 2px solid `#E4FB4E` border, `#E4FB4E` background, `#1A2E05` text
-- Remove `flex-1` so pills size to content
+- Shared component accepting `src`, `alt`, optional `overlay` (for scan line), optional `children` (for X button)
+- Applies consistent width, max-height, border-radius, shadow, and object-fit
+- Wraps image in a relatively-positioned container for overlays
 
-**Analyze button:**
-- Fixed position at bottom, 24px from bottom edge
-- Full width with 20px padding on each side (total 40px)
-- Height 56px, border-radius 20px
-- Background `#E4FB4E`, text `#1A2E05` at 17px semibold
-- Add bottom padding to main content so it doesn't hide behind the fixed button
+**2. `src/pages/Analyze.tsx` (normal view)**
+
+- Replace the inline image + wrapper with `ScreenshotPreview`
+- Keep the X (remove) button as a child overlay
+- Adjust the top margin so the image lands at the shared position (accounting for header height)
+- Screenshot should appear at ~108px from viewport top (after header)
+
+**3. `src/pages/Analyze.tsx` (scanning overlay)**
+
+- **Title "Scanning the vibe..." positioning:**
+  - Margin-top: 80px from viewport top 
+  - Font-size: 28px 
+  - Font-weight: bold (700) 
+  - Color: #FFFFFF 
+  - Text-align: center 
+- Then 40px gap before the ScreenshotPreview
+- Replace inline image with `ScreenshotPreview`
+- Pass the scan line animation as an overlay prop
+- Chatting with [Context]" text below the image: 
+  - Margin-top: 24px 
+  - Font-size: 17px 
+  - Color: rgba(255,255,255,0.7) 
+  - Highlight context name in #ECFF51 
+- Cancel button at bottom (margin-bottom: 40px)
+
+**4. `src/pages/Results.tsx**`
+
+- `ScreenshotPreview`as background layer (fixed position, top of page) 
+- Apply opacity: 0.5 to the entire ScreenshotPreview wrapper 
+- Bottom sheet overlays on top (z-index: 10) 
+- User can still see dimmed screenshot when sheet is expanded
+- Replace the background centered image with `<ScreenshotPreview>` at the same fixed position (top of page, same width/height) 
+- **Background layer setup:** 
+  - Position: fixed or absolute at top of page 
+  - Apply `opacity: 0.5` to the entire ScreenshotPreview wrapper (dimmed background)
+  - Screenshot uses same positioning as `/analyze` page 
+- **Bottom sheet overlays on top:** 
+  - z-index: 10 (above the dimmed screenshot) 
+  - User can see background screenshot at all times when sheet is open 
+- The bottom sheet will overlay on top as before
+
+&nbsp;
+
+### Technical Details
+
+The `ScreenshotPreview` component:
+
+```typescript
+// Consistent image styling across all pages
+interface ScreenshotPreviewProps {
+  src: string;
+  alt?: string;
+  className?: string;       // extra wrapper classes
+  overlay?: React.ReactNode; // scan line, etc.
+  children?: React.ReactNode; // X button, etc.
+  style?: React.CSSProperties; // for opacity on results page
+}
+```
+
+Key style constants extracted:
+
+- `maxHeight: 450px`
+- `width: 100%` within a container that has 20px horizontal padding
+- `objectFit: "contain"`
+- `borderRadius: 12px`
+- `boxShadow: "0px 4px 20px rgba(0,0,0,0.3)"`
+
+The top margin on each page will be calculated so the image's top edge lands at the same absolute screen position: 
+
+- `/analyze` page: ~108px from viewport top (after header) 
+- Scanning overlay: Title at 80px, then 40px gap, then image 
+- `/results` page: Same position as `/analyze`, but dimmed (50% opacity)
+
+No functionality changes -- only visual consistency.

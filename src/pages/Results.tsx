@@ -1,23 +1,26 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { motion, useMotionValue, useTransform, useAnimation, PanInfo } from "framer-motion";
 import { useCallback, useRef, useState, useEffect } from "react";
 import WordLabCard from "@/components/WordLabCard";
 import PlaybookSection from "@/components/PlaybookSection";
 
-const SNAP_POINTS = { expanded: 0.1, mid: 0.4, minimized: 0.6 };
+const SNAP_POINTS = { expanded: 0.1, mid: 0.35, collapsed: 0.6 };
+const SPRING = { transition: "transform 300ms ease-out" };
 
 const Results = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const analysisData = location.state?.analysisData;
   const imageData = location.state?.imageData;
-  const context = location.state?.context;
 
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-  const controls = useAnimation();
-  const y = useMotionValue(windowHeight * SNAP_POINTS.mid);
+  const [sheetY, setSheetY] = useState(window.innerHeight * SNAP_POINTS.mid);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(true);
+  const dragStartY = useRef(0);
+  const dragStartSheetY = useRef(0);
+  const isDragOnHandle = useRef(false);
 
   useEffect(() => {
     const onResize = () => setWindowHeight(window.innerHeight);
@@ -25,57 +28,71 @@ const Results = () => {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // Set initial position on mount
   useEffect(() => {
-    controls.start({ y: windowHeight * SNAP_POINTS.mid });
-  }, [windowHeight, controls]);
+    setSheetY(windowHeight * SNAP_POINTS.mid);
+  }, [windowHeight]);
 
-  const bgOpacity = useTransform(
-    y,
-    [windowHeight * SNAP_POINTS.expanded, windowHeight * SNAP_POINTS.minimized],
-    [0.3, 0.7]
-  );
+  const snapTo = useCallback((snapFraction: number) => {
+    setIsAnimating(true);
+    setSheetY(windowHeight * snapFraction);
+  }, [windowHeight]);
 
-  const handleDragEnd = useCallback(
-    (_: any, info: PanInfo) => {
-      const currentY = y.get();
-      const velocity = info.velocity.y;
-      const midY = windowHeight * SNAP_POINTS.mid;
-      const expandedY = windowHeight * SNAP_POINTS.expanded;
-      const minimizedY = windowHeight * SNAP_POINTS.minimized;
+  const getCurrentSnap = useCallback(() => {
+    const collapsed = windowHeight * SNAP_POINTS.collapsed;
+    const mid = windowHeight * SNAP_POINTS.mid;
+    const expanded = windowHeight * SNAP_POINTS.expanded;
+    const distances = [
+      { key: "expanded", y: expanded, dist: Math.abs(sheetY - expanded) },
+      { key: "mid", y: mid, dist: Math.abs(sheetY - mid) },
+      { key: "collapsed", y: collapsed, dist: Math.abs(sheetY - collapsed) },
+    ];
+    return distances.reduce((a, b) => (a.dist < b.dist ? a : b));
+  }, [sheetY, windowHeight]);
 
-      // Fast swipe detection
-      if (velocity < -500) {
-        controls.start({ y: expandedY, transition: { type: "spring", damping: 30, stiffness: 300 } });
-        return;
-      }
-      if (velocity > 500) {
-        if (currentY > midY) {
-          navigate("/");
-          return;
-        }
-        controls.start({ y: minimizedY, transition: { type: "spring", damping: 30, stiffness: 300 } });
-        return;
-      }
+  // Handle-only drag handlers
+  const onHandlePointerDown = useCallback((e: React.PointerEvent) => {
+    isDragOnHandle.current = true;
+    setIsDragging(true);
+    setIsAnimating(false);
+    dragStartY.current = e.clientY;
+    dragStartSheetY.current = sheetY;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [sheetY]);
 
-      // Snap to nearest
-      const distances = [
-        { point: expandedY, key: "expanded" },
-        { point: midY, key: "mid" },
-        { point: minimizedY, key: "minimized" },
-      ];
-      const nearest = distances.reduce((a, b) =>
-        Math.abs(currentY - a.point) < Math.abs(currentY - b.point) ? a : b
-      );
+  const onHandlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragOnHandle.current) return;
+    const delta = e.clientY - dragStartY.current;
+    const newY = dragStartSheetY.current + delta;
+    const minY = windowHeight * SNAP_POINTS.expanded;
+    const maxY = windowHeight * SNAP_POINTS.collapsed + 80;
+    setSheetY(Math.max(minY, Math.min(maxY, newY)));
+  }, [windowHeight]);
 
-      if (nearest.key === "minimized" && currentY > minimizedY + 40) {
-        navigate("/");
-        return;
-      }
+  const onHandlePointerUp = useCallback(() => {
+    if (!isDragOnHandle.current) return;
+    isDragOnHandle.current = false;
+    setIsDragging(false);
 
-      controls.start({ y: nearest.point, transition: { type: "spring", damping: 30, stiffness: 300 } });
-    },
-    [y, windowHeight, controls, navigate]
-  );
+    const collapsedY = windowHeight * SNAP_POINTS.collapsed;
+    const midY = windowHeight * SNAP_POINTS.mid;
+    const expandedY = windowHeight * SNAP_POINTS.expanded;
+
+    // If dragged well below collapsed → dismiss
+    if (sheetY > collapsedY + 40) {
+      navigate("/");
+      return;
+    }
+
+    // Snap to nearest
+    const distances = [
+      { snap: SNAP_POINTS.expanded, dist: Math.abs(sheetY - expandedY) },
+      { snap: SNAP_POINTS.mid, dist: Math.abs(sheetY - midY) },
+      { snap: SNAP_POINTS.collapsed, dist: Math.abs(sheetY - collapsedY) },
+    ];
+    const nearest = distances.reduce((a, b) => (a.dist < b.dist ? a : b));
+    snapTo(nearest.snap);
+  }, [sheetY, windowHeight, navigate, snapTo]);
 
   if (!analysisData) {
     return (
@@ -88,18 +105,20 @@ const Results = () => {
     );
   }
 
+  const sheetHeight = windowHeight - sheetY;
+
   return (
     <div className="fixed inset-0 bg-background flex justify-center overflow-hidden">
       <div className="w-full max-w-[430px] relative h-full">
-        {/* Background: original screenshot */}
+        {/* Background: original screenshot - always visible */}
         {imageData && (
-          <motion.div className="absolute inset-0 flex items-center justify-center p-6" style={{ opacity: bgOpacity }}>
+          <div className="absolute inset-0 flex items-center justify-center p-6" style={{ opacity: 0.5 }}>
             <img
               src={imageData}
               alt="Original screenshot"
               className="max-w-full max-h-full object-contain rounded-xl"
             />
-          </motion.div>
+          </div>
         )}
 
         {/* Back button */}
@@ -112,32 +131,50 @@ const Results = () => {
         </button>
 
         {/* Bottom Sheet */}
-        <motion.div
-          ref={sheetRef}
+        <div
           className="absolute left-0 right-0 z-40 flex flex-col"
           style={{
-            y,
+            transform: `translateY(${sheetY}px)`,
             height: windowHeight,
             background: "#121214",
             borderRadius: "24px 24px 0 0",
-            touchAction: "none",
+            ...(isAnimating && !isDragging ? SPRING : {}),
           }}
-          drag="y"
-          dragConstraints={{
-            top: windowHeight * SNAP_POINTS.expanded,
-            bottom: windowHeight * SNAP_POINTS.minimized + 60,
-          }}
-          dragElastic={0.1}
-          onDragEnd={handleDragEnd}
-          animate={controls}
         >
-          {/* Handle */}
-          <div className="flex justify-center pt-3 pb-4 cursor-grab active:cursor-grabbing">
-            <div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.3)" }} />
+          {/* Handle - primary drag target */}
+          <div
+            className="flex justify-center cursor-grab active:cursor-grabbing select-none"
+            style={{ padding: "12px 0 8px" }}
+            onPointerDown={onHandlePointerDown}
+            onPointerMove={onHandlePointerMove}
+            onPointerUp={onHandlePointerUp}
+            onPointerCancel={onHandlePointerUp}
+          >
+            <div
+              className="rounded-full active:scale-110 transition-transform"
+              style={{
+                width: 40,
+                height: 4,
+                background: "rgba(255,255,255,0.3)",
+                borderRadius: 2,
+              }}
+            />
           </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto px-5 pb-12 overscroll-contain" style={{ WebkitOverflowScrolling: "touch" }}>
+          {/* Scrollable content - independent scroll, NO drag resize */}
+          <div
+            ref={contentRef}
+            className="flex-1 overflow-y-auto overscroll-contain"
+            style={{
+              paddingTop: 16,
+              paddingBottom: 60,
+              paddingLeft: 20,
+              paddingRight: 20,
+              maxHeight: sheetHeight - 32,
+              WebkitOverflowScrolling: "touch",
+              touchAction: "pan-y",
+            }}
+          >
             {/* Header */}
             <h1 className="text-[22px] font-semibold text-foreground mb-4">Analysis</h1>
             <div className="h-px bg-border mb-5" />
@@ -194,7 +231,7 @@ const Results = () => {
               </section>
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

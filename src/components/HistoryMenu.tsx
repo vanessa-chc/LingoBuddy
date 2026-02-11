@@ -25,6 +25,8 @@ const PRIMARY_GREEN = "#9DFF50";
 interface HistoryMenuProps {
   open: boolean;
   onClose: () => void;
+  /** When viewing a result from history, pass its row id to highlight that row. */
+  selectedId?: string | null;
 }
 
 function getVibeSummary(row: AnalysisHistoryRow): string {
@@ -33,7 +35,7 @@ function getVibeSummary(row: AnalysisHistoryRow): string {
   return summary.length > 80 ? `${summary.slice(0, 80).trim()}…` : summary;
 }
 
-export default function HistoryMenu({ open, onClose }: HistoryMenuProps) {
+export default function HistoryMenu({ open, onClose, selectedId = null }: HistoryMenuProps) {
   const navigate = useNavigate();
   const containerRef = useAppContainer();
   const [items, setItems] = useState<AnalysisHistoryRow[]>([]);
@@ -58,6 +60,7 @@ export default function HistoryMenu({ open, onClose }: HistoryMenuProps) {
         imageData: row.image_url ?? undefined,
         relationshipLabel: row.relationship_context,
         fromHistory: true,
+        historyRowId: row.id,
       },
     });
   };
@@ -108,7 +111,8 @@ export default function HistoryMenu({ open, onClose }: HistoryMenuProps) {
                       onClick={() => handleSelect(row)}
                       className={cn(
                         "flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors",
-                        "hover:bg-white/5 active:bg-white/10"
+                        "active:opacity-90",
+                        selectedId === row.id && "bg-white/10"
                       )}
                     >
                       <span

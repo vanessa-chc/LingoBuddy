@@ -2,7 +2,6 @@ import { useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import HistoryMenu from "@/components/HistoryMenu";
-import { toast } from "sonner";
 import { analyzeScreenshot } from "@/lib/gemini";
 import ScreenshotPreview from "@/components/ScreenshotPreview";
 
@@ -43,11 +42,18 @@ const Analyze = () => {
       navigate("/results", {
         state: { analysisData, imageData, context: selectedContext, relationshipLabel, fromAnalyze: true }
       });
-    } catch (e: any) {
-      if (e?.name === "AbortError" || abortRef.current?.signal.aborted) return;
+    } catch (e: unknown) {
+      if ((e as { name?: string })?.name === "AbortError" || abortRef.current?.signal.aborted) return;
       console.error("Analysis error:", e);
-      toast.error(e?.message || "Analysis failed. Please try again.");
       setIsAnalyzing(false);
+      navigate("/results", {
+        state: {
+          analysisError: true,
+          imageData,
+          relationshipLabel: CONTEXTS.find((c) => c.value === selectedContext)?.label ?? selectedContext,
+          context: selectedContext,
+        },
+      });
     }
   }, [imageData, selectedContext, navigate]);
 

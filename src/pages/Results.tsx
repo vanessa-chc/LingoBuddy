@@ -23,6 +23,10 @@ const Results = () => {
   const imageData = location.state?.imageData as string | undefined;
   const fromAnalyze = (location.state as { fromAnalyze?: boolean } | undefined)?.fromAnalyze === true;
   const fromHistory = (location.state as { fromHistory?: boolean } | undefined)?.fromHistory === true;
+  const historyRowId = (location.state as { historyRowId?: string } | undefined)?.historyRowId ?? null;
+  const analysisError = (location.state as { analysisError?: boolean } | undefined)?.analysisError === true;
+  const errorRetryImage = (location.state as { imageData?: string } | undefined)?.imageData;
+  const errorRetryLabel = (location.state as { relationshipLabel?: string } | undefined)?.relationshipLabel;
 
   // Persist refetch inputs from navigation state so preset change always has image + context
   const refetchRef = useRef<{ imageData: string; relationshipLabel: string } | null>(null);
@@ -35,6 +39,29 @@ const Results = () => {
     }
     return () => { refetchRef.current = null; };
   }, [location.state]);
+
+  const [retryLoading, setRetryLoading] = useState(false);
+  const handleRetryAnalysis = useCallback(async () => {
+    if (!errorRetryImage || !errorRetryLabel) return;
+    setRetryLoading(true);
+    try {
+      const result = await analyzeScreenshot(errorRetryImage, errorRetryLabel);
+      setAnalysisData(result);
+      navigate("/results", {
+        replace: true,
+        state: {
+          analysisData: result,
+          imageData: errorRetryImage,
+          relationshipLabel: errorRetryLabel,
+          fromAnalyze: true,
+        },
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Leon's still napping. Try again in a bit?");
+    } finally {
+      setRetryLoading(false);
+    }
+  }, [errorRetryImage, errorRetryLabel, navigate]);
 
   // Save to analysis_history once when we land from Analyze (new analysis). No save on refresh (state lost) or when opening from history.
   useEffect(() => {
@@ -171,6 +198,46 @@ const Results = () => {
   }, [sheetY, containerHeight, snapTo]);
 
   if (!analysisData) {
+    if (analysisError && errorRetryImage && errorRetryLabel) {
+      return (
+        <div className="min-h-screen w-full bg-[#121212] relative">
+          <div className="w-full flex flex-col min-h-screen">
+            <header className="flex items-center px-6 pt-6 pb-2 w-full">
+              <button
+                type="button"
+                onClick={() => setHistoryMenuOpen(true)}
+                className="p-2 -ml-2 text-white touch-manipulation"
+                aria-label="Open history"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+            </header>
+            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+              <img
+                src={CHAMELEON_AVATAR}
+                alt="Leon"
+                className="h-24 w-24 rounded-full object-cover ring-2 ring-white/20 opacity-90"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+              <p className="mt-6 text-[17px] text-white/90 leading-snug">
+                Oops, Leon is taking a nap. 😴 He might have over-analyzed too many vibes! Try again in a bit?
+              </p>
+              <button
+                type="button"
+                onClick={handleRetryAnalysis}
+                disabled={retryLoading}
+                className="mt-6 py-3 px-6 rounded-2xl font-semibold text-white bg-[#9DFF50]/20 text-[#9DFF50] border border-[#9DFF50]/50 active:opacity-90 disabled:opacity-60 transition-opacity"
+              >
+                {retryLoading ? "One sec…" : "Try Again"}
+              </button>
+            </div>
+            <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} selectedId={historyRowId} />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen w-full bg-[#121212] relative">
         <div className="w-full flex flex-col min-h-screen">
@@ -188,7 +255,7 @@ const Results = () => {
             <p className="text-white/70">No analysis data found.</p>
             <button onClick={() => navigate("/")} className="mt-4 text-[#9DFF50] text-sm font-medium">Go back</button>
           </div>
-          <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} />
+          <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} selectedId={historyRowId} />
         </div>
       </div>
     );
@@ -222,7 +289,7 @@ const Results = () => {
           </button>
         </header>
 
-        <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} />
+        <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} selectedId={historyRowId} />
 
         {/* Content area — px-6 to match Index so hamburger aligns; header has its own px-6 */}
         <div className="px-6">

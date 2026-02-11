@@ -1,10 +1,12 @@
 import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
+import { toast } from "sonner";
 import UploadActionSheet from "@/components/UploadActionSheet";
 import HistoryMenu from "@/components/HistoryMenu";
 
-const ACCEPTED_TYPES = "image/png,image/jpeg,image/heic";
+const ACCEPTED_TYPES = "image/png,image/jpeg,image/jpg,image/webp,image/heic";
+const ALLOWED_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/heic"];
 
 const fileToBase64 = (file: File): Promise<string> =>
 new Promise((resolve, reject) => {
@@ -30,9 +32,14 @@ const Index = () => {
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (!file) return;
-      const base64 = await fileToBase64(file);
       e.target.value = "";
+      if (!file) return;
+      const type = file.type?.toLowerCase();
+      if (!type || !ALLOWED_MIME_TYPES.includes(type)) {
+        toast.error("Whoops! Leon only eats images for breakfast. 📸 Please upload a screenshot!");
+        return;
+      }
+      const base64 = await fileToBase64(file);
       navigateToAnalyze(base64);
     },
     [navigateToAnalyze]

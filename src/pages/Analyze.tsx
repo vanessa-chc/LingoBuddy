@@ -97,10 +97,10 @@ const Analyze = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex justify-center">
-      <div className="w-full max-w-[430px] flex flex-col min-h-screen">
+    <div className="min-h-screen w-screen max-w-[100vw] overflow-x-hidden bg-background flex justify-center box-border">
+      <div className="w-full max-w-[430px] flex flex-col min-h-screen px-5">
         {/* Header */}
-        <header className="flex items-center gap-3 px-5 pt-4 pb-2">
+        <header className="flex items-center gap-3 pt-4 pb-2 -mx-0">
           <button
             onClick={() => navigate("/")}
             className="p-2 -ml-2 text-foreground"
@@ -112,14 +112,14 @@ const Analyze = () => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col px-5 pb-[100px]">
+        <main className="flex-1 flex flex-col pb-[100px]">
           {/* Screenshot Preview */}
           {imageData && (
-            <div className="relative flex justify-center mt-4">
+            <div className="relative mt-6 mx-auto w-full">
               <img
                 src={imageData}
                 alt="Uploaded screenshot"
-                className="max-h-[400px] object-contain"
+                className="block w-full max-h-[400px] object-contain mx-auto"
                 style={{
                   borderRadius: 12,
                   boxShadow: "0px 4px 20px rgba(0,0,0,0.3)",
@@ -127,7 +127,7 @@ const Analyze = () => {
               />
               <button
                 onClick={() => navigate("/")}
-                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-foreground hover:bg-white/25 transition-colors"
+                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-foreground active:bg-white/25 transition-colors"
                 aria-label="Remove image"
               >
                 <X className="w-5 h-5" />
@@ -137,16 +137,16 @@ const Analyze = () => {
 
           {/* Context Label */}
           <p
-            className="text-left text-muted-foreground"
-            style={{ marginTop: 24, fontSize: 17 }}
+            className="text-left"
+            style={{ marginTop: 32, marginBottom: 16, fontSize: 17, color: "rgba(255,255,255,0.7)" }}
           >
             Chatting with...
           </p>
 
           {/* Context Pills */}
           <div
-            className="flex overflow-x-auto no-scrollbar"
-            style={{ gap: 12, marginTop: 12 }}
+            className="flex overflow-x-auto overflow-y-hidden -mx-5 px-5 pb-1"
+            style={{ gap: 12, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
           >
             {CONTEXTS.map((ctx) => {
               const isSelected = selectedContext === ctx.value;
@@ -154,7 +154,7 @@ const Analyze = () => {
                 <button
                   key={ctx.value}
                   onClick={() => setSelectedContext(ctx.value)}
-                  className="shrink-0 font-semibold transition-colors"
+                  className="shrink-0 font-semibold whitespace-nowrap transition-colors"
                   style={{
                     padding: "12px 24px",
                     borderRadius: 24,
@@ -165,7 +165,7 @@ const Analyze = () => {
                     background: isSelected ? "hsl(var(--cta))" : "transparent",
                     color: isSelected
                       ? "hsl(var(--cta-foreground))"
-                      : "hsl(var(--foreground))",
+                      : "rgba(255,255,255,0.7)",
                   }}
                 >
                   {ctx.label}
@@ -176,7 +176,7 @@ const Analyze = () => {
         </main>
 
         {/* Fixed Analyze Button */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-5">
+        <div className="fixed bottom-6 left-5 right-5 z-10" style={{ maxWidth: "calc(430px - 40px)", margin: "0 auto" }}>
           <button
             disabled={!selectedContext}
             onClick={handleAnalyze}

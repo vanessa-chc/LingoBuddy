@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import WordLabCard from "@/components/WordLabCard";
 import PlaybookSection from "@/components/PlaybookSection";
 import ScreenshotPreview from "@/components/ScreenshotPreview";
+import HistoryMenu from "@/components/HistoryMenu";
 import { analyzeScreenshot } from "@/lib/gemini";
+import { insertAnalysisHistory } from "@/lib/analysisHistory";
 
 const CHAMELEON_AVATAR = "/assets/ChameleonAvatar.png";
 
@@ -17,10 +19,15 @@ const Results = () => {
   const navigate = useNavigate();
   const [analysisData, setAnalysisData] = useState(location.state?.analysisData);
   const [playbookLoading, setPlaybookLoading] = useState(false);
+  const [historyMenuOpen, setHistoryMenuOpen] = useState(false);
   const imageData = location.state?.imageData as string | undefined;
+  const fromAnalyze = (location.state as { fromAnalyze?: boolean } | undefined)?.fromAnalyze === true;
+  const fromHistory = (location.state as { fromHistory?: boolean } | undefined)?.fromHistory === true;
 
   // Persist refetch inputs from navigation state so preset change always has image + context
   const refetchRef = useRef<{ imageData: string; relationshipLabel: string } | null>(null);
+  const hasSavedToHistoryRef = useRef(false);
+
   useEffect(() => {
     const state = location.state as { imageData?: string; relationshipLabel?: string; analysisData?: unknown } | undefined;
     if (state?.imageData && state?.relationshipLabel) {
@@ -28,6 +35,22 @@ const Results = () => {
     }
     return () => { refetchRef.current = null; };
   }, [location.state]);
+
+  // Save to analysis_history once when we land from Analyze (new analysis). No save on refresh (state lost) or when opening from history.
+  useEffect(() => {
+    if (fromHistory || !fromAnalyze || hasSavedToHistoryRef.current) return;
+    const relationshipLabel = (location.state as { relationshipLabel?: string })?.relationshipLabel;
+    if (!analysisData || !imageData || !relationshipLabel) return;
+
+    hasSavedToHistoryRef.current = true;
+    insertAnalysisHistory({
+      relationship_context: relationshipLabel,
+      analysis_result: analysisData as Record<string, unknown>,
+      image_url: imageData,
+    }).then(({ error }) => {
+      if (error) console.error("Failed to save analysis history:", error);
+    });
+  }, [fromAnalyze, fromHistory, analysisData, imageData, location.state]);
 
   const handlePresetChange = useCallback(async (preset: string | null) => {
     const refetch = refetchRef.current;
@@ -56,8 +79,9 @@ const Results = () => {
   }, []);
 
   const contentRef = useRef<HTMLDivElement>(null);
-  const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-  const [sheetY, setSheetY] = useState(window.innerHeight * SNAP_POINTS.collapsed);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerHeight, setContainerHeight] = useState(() => typeof window !== "undefined" ? window.innerHeight : 600);
+  const [sheetY, setSheetY] = useState(() => typeof window !== "undefined" ? window.innerHeight * SNAP_POINTS.collapsed : 360);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(true);
   const dragStartY = useRef(0);
@@ -65,31 +89,48 @@ const Results = () => {
   const isDragOnHandle = useRef(false);
 
   useEffect(() => {
-    const onResize = () => setWindowHeight(window.innerHeight);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const height = entries[0]?.contentRect.height ?? window.innerHeight;
+      setContainerHeight(height);
+      setSheetY((prev) => {
+        const collapsedY = height * SNAP_POINTS.collapsed;
+        const midY = height * SNAP_POINTS.mid;
+        const expandedY = height * SNAP_POINTS.expanded;
+        const distances = [
+          { snap: collapsedY, dist: Math.abs(prev - collapsedY) },
+          { snap: midY, dist: Math.abs(prev - midY) },
+          { snap: expandedY, dist: Math.abs(prev - expandedY) },
+        ];
+        const nearest = distances.reduce((a, b) => (a.dist < b.dist ? a : b));
+        return nearest.snap;
+      });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
-    setSheetY(windowHeight * SNAP_POINTS.collapsed);
-  }, [windowHeight]);
+    setSheetY(containerHeight * SNAP_POINTS.collapsed);
+  }, [containerHeight]);
 
   const snapTo = useCallback((snapFraction: number) => {
     setIsAnimating(true);
-    setSheetY(windowHeight * snapFraction);
-  }, [windowHeight]);
+    setSheetY(containerHeight * snapFraction);
+  }, [containerHeight]);
 
   const getCurrentSnap = useCallback(() => {
-    const collapsed = windowHeight * SNAP_POINTS.collapsed;
-    const mid = windowHeight * SNAP_POINTS.mid;
-    const expanded = windowHeight * SNAP_POINTS.expanded;
+    const collapsed = containerHeight * SNAP_POINTS.collapsed;
+    const mid = containerHeight * SNAP_POINTS.mid;
+    const expanded = containerHeight * SNAP_POINTS.expanded;
     const distances = [
       { key: "expanded", y: expanded, dist: Math.abs(sheetY - expanded) },
       { key: "mid", y: mid, dist: Math.abs(sheetY - mid) },
       { key: "collapsed", y: collapsed, dist: Math.abs(sheetY - collapsed) },
     ];
     return distances.reduce((a, b) => (a.dist < b.dist ? a : b));
-  }, [sheetY, windowHeight]);
+  }, [sheetY, containerHeight]);
 
   // Handle-only drag handlers
   const onHandlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -99,25 +140,25 @@ const Results = () => {
     dragStartY.current = e.clientY;
     dragStartSheetY.current = sheetY;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, [sheetY]);
+  }, [sheetY, containerHeight]);
 
   const onHandlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragOnHandle.current) return;
     const delta = e.clientY - dragStartY.current;
     const newY = dragStartSheetY.current + delta;
-    const minY = windowHeight * SNAP_POINTS.expanded;
-    const maxY = windowHeight * SNAP_POINTS.collapsed;
+    const minY = containerHeight * SNAP_POINTS.expanded;
+    const maxY = containerHeight * SNAP_POINTS.collapsed;
     setSheetY(Math.max(minY, Math.min(maxY, newY)));
-  }, [windowHeight]);
+  }, [containerHeight]);
 
   const onHandlePointerUp = useCallback(() => {
     if (!isDragOnHandle.current) return;
     isDragOnHandle.current = false;
     setIsDragging(false);
 
-    const collapsedY = windowHeight * SNAP_POINTS.collapsed;
-    const midY = windowHeight * SNAP_POINTS.mid;
-    const expandedY = windowHeight * SNAP_POINTS.expanded;
+    const collapsedY = containerHeight * SNAP_POINTS.collapsed;
+    const midY = containerHeight * SNAP_POINTS.mid;
+    const expandedY = containerHeight * SNAP_POINTS.expanded;
 
     // Snap to nearest; do NOT dismiss to Home on swipe down — stay at collapsed
     const distances = [
@@ -127,30 +168,48 @@ const Results = () => {
     ];
     const nearest = distances.reduce((a, b) => (a.dist < b.dist ? a : b));
     snapTo(nearest.snap);
-  }, [sheetY, windowHeight, snapTo]);
+  }, [sheetY, containerHeight, snapTo]);
 
   if (!analysisData) {
     return (
-      <div className="min-h-screen bg-background flex justify-center">
-        <div className="w-full max-w-[430px] flex flex-col min-h-screen items-center justify-center px-5">
-          <p className="text-muted-foreground">No analysis data found.</p>
-          <button onClick={() => navigate("/")} className="mt-4 text-primary text-sm">Go back</button>
+      <div className="min-h-screen w-full bg-[#121212] relative">
+        <div className="w-full flex flex-col min-h-screen">
+          <header className="flex items-center px-6 pt-6 pb-2 w-full">
+            <button
+              type="button"
+              onClick={() => setHistoryMenuOpen(true)}
+              className="p-2 -ml-2 text-white"
+              aria-label="Open history"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </header>
+          <div className="flex flex-1 flex-col items-center justify-center px-6">
+            <p className="text-white/70">No analysis data found.</p>
+            <button onClick={() => navigate("/")} className="mt-4 text-[#9DFF50] text-sm font-medium">Go back</button>
+          </div>
+          <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} />
         </div>
       </div>
     );
   }
 
-  const sheetHeight = windowHeight - sheetY;
-  const collapsedY = windowHeight * SNAP_POINTS.collapsed;
+  const sheetHeight = containerHeight - sheetY;
+  const collapsedY = containerHeight * SNAP_POINTS.collapsed;
   const isSheetOverImage = sheetY < collapsedY;
   const imageOpacity = isSheetOverImage ? 0.5 : 1;
 
   return (
-    <div className="fixed inset-0 bg-[#121212] flex justify-center overflow-hidden">
-      <div className="w-full max-w-[430px] relative min-h-full flex flex-col px-5">
-        {/* Header row: hamburger left, New chat + right */}
-        <header className="relative z-50 flex items-center justify-between pt-6 pb-2">
-          <button type="button" className="p-2 -ml-2 text-white" aria-label="Menu">
+    <div className="min-h-screen w-full bg-[#121212] overflow-hidden relative" ref={containerRef}>
+      <div className="w-full relative min-h-full flex flex-col">
+        {/* Header — match Index: no wrapper px, header has px-6 so hamburger position is identical */}
+        <header className="relative z-[110] flex items-center justify-between px-6 pt-6 pb-2 w-full">
+          <button
+            type="button"
+            onClick={() => setHistoryMenuOpen(true)}
+            className="p-2 -ml-2 text-white touch-manipulation"
+            aria-label="Open history"
+          >
             <Menu className="w-6 h-6" />
           </button>
           <button
@@ -163,27 +222,29 @@ const Results = () => {
           </button>
         </header>
 
-        {/* Leon's Take: own row below header, left-aligned, large bold white */}
-        <h1 className="relative z-50 pt-2 text-left text-[34px] font-bold leading-tight tracking-tight text-white">
-          Leon&apos;s Take
-        </h1>
+        <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} />
 
-        {/* Image: same flow and size as Analyze (mt-6 mb-6 > ScreenshotPreview), 100% opacity when sheet collapsed, dimmed when sheet expanded */}
-        {imageData && (
-          <div
-            className="mt-6 mb-6"
-            style={{ opacity: imageOpacity, transition: "opacity 0.2s ease" }}
-          >
-            <ScreenshotPreview src={imageData} alt="Original screenshot" />
-          </div>
-        )}
+        {/* Content area — px-6 to match Index so hamburger aligns; header has its own px-6 */}
+        <div className="px-6">
+          <h1 className="relative z-50 pt-2 text-left text-[34px] font-bold leading-tight tracking-tight text-white">
+            Leon&apos;s Take
+          </h1>
+          {imageData && (
+            <div
+              className="mt-6 mb-6"
+              style={{ opacity: imageOpacity, transition: "opacity 0.2s ease" }}
+            >
+              <ScreenshotPreview src={imageData} alt="Original screenshot" />
+            </div>
+          )}
+        </div>
 
         {/* Analysis sheet — always on top (above header and title) */}
         <div
           className="absolute left-0 right-0 z-[100] flex flex-col"
           style={{
             transform: `translateY(${sheetY}px)`,
-            height: windowHeight,
+            height: containerHeight,
             background: "#0D0D0D",
             borderRadius: "24px 24px 0 0",
             ...(isAnimating && !isDragging ? SPRING : {}),

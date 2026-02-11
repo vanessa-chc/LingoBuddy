@@ -14,7 +14,29 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analysis_history: {
+        Row: {
+          id: string;
+          relationship_context: string;
+          analysis_result: Record<string, unknown>;
+          image_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          relationship_context: string;
+          analysis_result: Record<string, unknown>;
+          image_url?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          relationship_context?: string;
+          analysis_result?: Record<string, unknown>;
+          image_url?: string | null;
+          created_at?: string;
+        };
+      };
     }
     Views: {
       [_ in never]: never

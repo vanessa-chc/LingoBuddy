@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
+import HistoryMenu from "@/components/HistoryMenu";
 import { toast } from "sonner";
 import { analyzeScreenshot } from "@/lib/gemini";
 import ScreenshotPreview from "@/components/ScreenshotPreview";
@@ -20,6 +21,7 @@ const Analyze = () => {
   const imageData = location.state?.imageData as string | undefined;
   const [selectedContext, setSelectedContext] = useState<ContextValue | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [historyMenuOpen, setHistoryMenuOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const handleAnalyze = useCallback(async () => {
@@ -39,7 +41,7 @@ const Analyze = () => {
       if (abortRef.current?.signal.aborted) return;
 
       navigate("/results", {
-        state: { analysisData, imageData, context: selectedContext, relationshipLabel }
+        state: { analysisData, imageData, context: selectedContext, relationshipLabel, fromAnalyze: true }
       });
     } catch (e: any) {
       if (e?.name === "AbortError" || abortRef.current?.signal.aborted) return;
@@ -57,76 +59,91 @@ const Analyze = () => {
   // Scanning overlay — title (same size as "Got it! Ready to scan?"), image (no glow), context text, Cancel only
   if (isAnalyzing) {
     return (
-      <div className="min-h-screen bg-[#121212] flex justify-center">
-        <div className="w-full max-w-[430px] flex flex-col min-h-screen px-5">
-          <header className="flex items-center pt-6 pb-2">
-            <button type="button" className="p-2 -ml-2 text-white" aria-label="Menu">
+      <div className="min-h-screen w-full bg-[#121212] relative overflow-x-hidden">
+        <div className="w-full flex flex-col min-h-screen relative">
+          <header className="flex items-center px-6 pt-6 pb-2 w-full">
+            <button
+              type="button"
+              onClick={() => setHistoryMenuOpen(true)}
+              className="p-2 -ml-2 text-white touch-manipulation"
+              aria-label="Open history"
+            >
               <Menu className="w-6 h-6" />
             </button>
           </header>
+          <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} />
 
-          {/* Title — same large font as "Got it! Ready to scan?", left-aligned */}
-          <h1
-            className="text-left font-bold leading-tight tracking-tight text-white pt-2"
-            style={{ fontSize: 32 }}
-          >
-            Scanning the vibe...
-          </h1>
+          {/* Content inset so header and button stay inside phone container */}
+          <div className="flex flex-1 flex-col px-6">
+            {/* Title — same large font as "Got it! Ready to scan?", left-aligned */}
+            <h1
+              className="text-left font-bold leading-tight tracking-tight text-white pt-2"
+              style={{ fontSize: 32 }}
+            >
+              Scanning the vibe...
+            </h1>
 
-          {/* Image — same size as upload step, no green glow; scan line animation only */}
-          {imageData && (
-            <div className="mt-6">
-              <ScreenshotPreview
-                src={imageData}
-                alt="Scanning"
-                overlay={
-                  <div
-                    className="absolute left-0 right-0 h-[3px] animate-scan-line pointer-events-none"
-                    style={{
-                      background: "linear-gradient(90deg, transparent, #B8FF00, transparent)",
-                      boxShadow: "0 0 12px rgba(184, 255, 0, 0.6)",
-                    }}
-                  />
-                }
-              />
-            </div>
-          )}
+            {/* Image — same size as upload step, no green glow; scan line animation only */}
+            {imageData && (
+              <div className="mt-6">
+                <ScreenshotPreview
+                  src={imageData}
+                  alt="Scanning"
+                  overlay={
+                    <div
+                      className="absolute left-0 right-0 h-[3px] animate-scan-line pointer-events-none"
+                      style={{
+                        background: "linear-gradient(90deg, transparent, #B8FF00, transparent)",
+                        boxShadow: "0 0 12px rgba(184, 255, 0, 0.6)",
+                      }}
+                    />
+                  }
+                />
+              </div>
+            )}
 
-          {/* Dynamic: Chatting with [selected context] */}
-          <p className="text-center text-white mt-6" style={{ fontSize: 17 }}>
-            Chatting with{" "}
-            <span className="text-[#ECFF51] font-medium">
-              {selectedContext ? CONTEXTS.find((c) => c.value === selectedContext)?.label ?? selectedContext.charAt(0).toUpperCase() + selectedContext.slice(1) : ""}
-            </span>
-          </p>
+            {/* Dynamic: Chatting with [selected context] */}
+            <p className="text-center text-white mt-6" style={{ fontSize: 17 }}>
+              Chatting with{" "}
+              <span className="text-[#ECFF51] font-medium">
+                {selectedContext ? CONTEXTS.find((c) => c.value === selectedContext)?.label ?? selectedContext.charAt(0).toUpperCase() + selectedContext.slice(1) : ""}
+              </span>
+            </p>
 
-          <div className="flex-1" />
+            <div className="flex-1" />
 
-          {/* Cancel — Figma: large rounded-rectangle, dark grey, white text, generous padding */}
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="w-full py-4 rounded-2xl font-semibold text-white bg-[#2E2E2E] active:opacity-90 transition-opacity mb-10 text-[17px]"
-          >
-            Cancel
-          </button>
+            {/* Cancel — Figma: large rounded-rectangle, dark grey, white text, generous padding */}
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="w-full py-4 rounded-2xl font-semibold text-white bg-[#2E2E2E] active:opacity-90 transition-opacity mb-10 text-[17px]"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-screen max-w-[100vw] overflow-x-hidden bg-[#121212] flex justify-center box-border">
-      <div className="w-full max-w-[430px] flex flex-col min-h-screen px-5">
-        {/* Header: hamburger only; close is on the image overlay */}
-        <header className="flex items-center pt-6 pb-2">
-          <button className="p-2 -ml-2 text-white" aria-label="Menu">
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#121212] relative">
+      <div className="w-full flex flex-col min-h-screen relative">
+        {/* Header — match Index: no wrapper px, header has px-6 so hamburger position is identical */}
+        <header className="flex items-center px-6 pt-6 pb-2 w-full">
+          <button
+            type="button"
+            onClick={() => setHistoryMenuOpen(true)}
+            className="p-2 -ml-2 text-white touch-manipulation"
+            aria-label="Open history"
+          >
             <Menu className="w-6 h-6" />
           </button>
         </header>
+        <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} />
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col pb-28">
+        <main className="flex-1 flex flex-col pb-28 px-6">
           {/* Main heading — Figma: large, bold, left-aligned */}
           <h1 className="text-[32px] font-bold leading-tight tracking-tight text-white pt-2">
             Got it! Ready to scan?
@@ -148,8 +165,8 @@ const Analyze = () => {
           )}
         </main>
 
-        {/* Context pills — fixed 24px above Analyze button, single row */}
-        <div className="fixed bottom-[104px] left-5 right-5 z-10 max-w-[390px] mx-auto">
+        {/* Context pills — inside phone container, 24px above Analyze button */}
+        <div className="absolute bottom-[104px] left-0 right-0 z-10 px-6">
           <p className="text-[17px] text-white/70 mb-2">
             Chatting with...
           </p>
@@ -173,8 +190,8 @@ const Analyze = () => {
           </div>
         </div>
 
-        {/* Fixed Analyze Button — lime-green gradient, 24px from bottom */}
-        <div className="fixed bottom-6 left-5 right-5 z-10 max-w-[390px] mx-auto">
+        {/* Analyze Button — inside phone container, 24px from bottom */}
+        <div className="absolute bottom-6 left-0 right-0 z-10 px-6">
           <button
             disabled={!selectedContext}
             onClick={handleAnalyze}

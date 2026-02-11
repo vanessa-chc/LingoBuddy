@@ -2,6 +2,7 @@ import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import UploadActionSheet from "@/components/UploadActionSheet";
+import HistoryMenu from "@/components/HistoryMenu";
 
 const ACCEPTED_TYPES = "image/png,image/jpeg,image/heic";
 
@@ -17,6 +18,7 @@ const Index = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [historyMenuOpen, setHistoryMenuOpen] = useState(false);
 
   const navigateToAnalyze = useCallback(
     (base64: string) => {
@@ -71,17 +73,23 @@ const Index = () => {
     }}, [navigateToAnalyze]);
 
   return (
-    <div className="min-h-screen bg-[#121212] flex justify-center">
-      <div className="w-full max-w-[430px] flex flex-col min-h-screen">
-        {/* Header — hamburger only, Figma layout */}
-        <header className="flex items-center px-5 pt-6 pb-2">
-          <button className="p-2 -ml-2 text-white" aria-label="Menu">
+    <div className="min-h-screen w-full bg-[#121212] relative">
+      <div className="w-full flex flex-col min-h-screen">
+        {/* Header — full width like native app */}
+        <header className="flex items-center px-6 pt-6 pb-2 w-full">
+          <button
+            type="button"
+            onClick={() => setHistoryMenuOpen(true)}
+            className="p-2 -ml-2 text-white touch-manipulation"
+            aria-label="Open history"
+          >
             <Menu className="w-6 h-6" />
           </button>
         </header>
+        <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} />
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col px-5 pb-8">
+        <main className="flex-1 flex flex-col px-6 pb-8">
           <div className="pt-2">
             <h1 className="font-bold leading-[1.2] tracking-tight text-white text-[32px]">
               What did you find, Vanessa?

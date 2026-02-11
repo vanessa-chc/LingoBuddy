@@ -101,10 +101,32 @@ Be accurate, fun, and insightful. If there's no slang, still analyze the tone an
     }
 
     const data = await response.json();
+    console.log("AI response finish_reason:", data.choices?.[0]?.finish_reason);
+    console.log("AI response content length:", data.choices?.[0]?.message?.content?.length ?? 0);
+    
     const content = data.choices?.[0]?.message?.content;
+    const finishReason = data.choices?.[0]?.finish_reason;
 
     if (!content) {
-      throw new Error("No content returned from AI");
+      console.error("Empty AI response. Full data:", JSON.stringify(data).slice(0, 500));
+      
+      if (finishReason === "length") {
+        return new Response(
+          JSON.stringify({ error: "AI response was too long. Please try a simpler screenshot." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (finishReason === "content_filter" || finishReason === "SAFETY") {
+        return new Response(
+          JSON.stringify({ error: "Content was filtered by safety checks. Try a different screenshot." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ error: "AI could not analyze this image. Please try again." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Parse the JSON from the response, stripping markdown code fences if present

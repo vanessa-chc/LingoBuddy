@@ -112,10 +112,10 @@ const Analyze = () => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col pb-[100px]">
+        <main className="flex-1 flex-col pb-[100px] flex items-center justify-start">
           {/* Screenshot Preview */}
           {imageData &&
-          <div className="relative mt-6 mx-auto w-full">
+          <div className="relative mx-auto w-full mt-[60px] mb-[24px] my-[6px]">
               <img
               src={imageData}
               alt="Uploaded screenshot"
@@ -145,7 +145,7 @@ const Analyze = () => {
 
           {/* Context Pills */}
           <div
-            className="overflow-x-auto overflow-y-hidden pb-1 mx-0 px-0 items-center justify-start gap-[8px] flex flex-row"
+            className="overflow-x-auto overflow-y-hidden pb-1 flex-row mx-[20px] px-[2px] flex items-center justify-center gap-[4px]"
             style={{ gap: 12, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
 
             {CONTEXTS.map((ctx) => {

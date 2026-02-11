@@ -14,10 +14,10 @@ const UploadActionSheet = ({ open, onClose, onSelectSource }: UploadActionSheetP
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+    <div className="absolute inset-0 z-50 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative w-full max-w-[430px] px-5 pb-5 animate-in slide-in-from-bottom duration-300"
+        className="relative w-full px-6 pb-5 animate-in slide-in-from-bottom duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Grouped options — #1C1C1E, 12px radius, separators #48484A */}

@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body,
+  #root {
+    min-height: 100vh;
+    width: 100%;
+    background-color: #0A0A0B;
+  }
+
   :root {
     /* Figma: main background ~#121212 */
     --background: 0 0% 7%;

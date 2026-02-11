@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import ScreenshotPreview from "@/components/ScreenshotPreview";
 
 const CONTEXTS = [
 { value: "friend", label: "Friend" },
@@ -65,27 +66,26 @@ const Analyze = () => {
         <div className="w-full max-w-[430px] flex flex-col min-h-screen items-center px-5">
           {/* Title at TOP */}
           <p
-            className="text-center font-bold text-foreground mt-[60px]"
+            className="text-center font-bold text-foreground"
             style={{ marginTop: 80, fontSize: 28, letterSpacing: -0.5 }}>
             Scanning the vibe...
           </p>
 
           {/* Image with scan line */}
-          <div className="relative overflow-hidden" style={{ marginTop: 40, width: "calc(100% - 80px)", borderRadius: 12 }}>
-            {imageData &&
-            <img
-              src={imageData}
-              alt="Scanning"
-              className="w-full block"
-              style={{ maxHeight: 400, objectFit: "contain", borderRadius: 12, boxShadow: "0px 4px 20px rgba(0,0,0,0.3)" }} />
-
-            }
-            {/* Animated scan line */}
-            <div
-              className="absolute left-0 right-0 h-[3px] animate-scan-line"
-              style={{ background: "linear-gradient(90deg, transparent, #ECFF51, transparent)", boxShadow: "0 0 12px rgba(236,255,81,0.6)" }} />
-
-          </div>
+          {imageData && (
+            <div style={{ marginTop: 40 }}>
+              <ScreenshotPreview
+                src={imageData}
+                alt="Scanning"
+                overlay={
+                  <div
+                    className="absolute left-0 right-0 h-[3px] animate-scan-line"
+                    style={{ background: "linear-gradient(90deg, transparent, #ECFF51, transparent)", boxShadow: "0 0 12px rgba(236,255,81,0.6)" }}
+                  />
+                }
+              />
+            </div>
+          )}
 
           {/* Context label */}
           <p className="text-center" style={{ marginTop: 24, fontSize: 17, color: "rgba(255,255,255,0.7)" }}>
@@ -137,26 +137,19 @@ const Analyze = () => {
         {/* Main Content */}
         <main className="flex-1 flex-col pb-[100px] flex items-center justify-start">
           {/* Screenshot Preview */}
-          {imageData &&
-          <div className="relative mx-auto w-full mt-[60px] mb-[24px] my-[6px]">
-              <img
-              src={imageData}
-              alt="Uploaded screenshot"
-              className="block w-full max-h-[400px] object-contain mx-auto"
-              style={{
-                borderRadius: 12,
-                boxShadow: "0px 4px 20px rgba(0,0,0,0.3)"
-              }} />
-
-              <button
-              onClick={() => navigate("/")}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-foreground active:bg-white/25 transition-colors"
-              aria-label="Remove image">
-
-                <X className="w-5 h-5" />
-              </button>
+          {imageData && (
+            <div className="mt-[60px] mb-[24px]">
+              <ScreenshotPreview src={imageData} alt="Uploaded screenshot">
+                <button
+                  onClick={() => navigate("/")}
+                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-foreground active:bg-white/25 transition-colors"
+                  aria-label="Remove image"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </ScreenshotPreview>
             </div>
-          }
+          )}
 
           {/* Context Label */}
           <p

@@ -65,26 +65,26 @@ const Analyze = () => {
         <div className="w-full max-w-[430px] flex flex-col min-h-screen items-center px-5">
           {/* Title at TOP */}
           <p
-            className="text-center font-bold text-foreground"
+            className="text-center font-bold text-foreground mt-[60px]"
             style={{ marginTop: 80, fontSize: 28, letterSpacing: -0.5 }}>
             Scanning the vibe...
           </p>
 
           {/* Image with scan line */}
           <div className="relative overflow-hidden" style={{ marginTop: 40, width: "calc(100% - 80px)", borderRadius: 12 }}>
-            {imageData && (
-              <img
-                src={imageData}
-                alt="Scanning"
-                className="w-full block"
-                style={{ maxHeight: 400, objectFit: "contain", borderRadius: 12, boxShadow: "0px 4px 20px rgba(0,0,0,0.3)" }}
-              />
-            )}
+            {imageData &&
+            <img
+              src={imageData}
+              alt="Scanning"
+              className="w-full block"
+              style={{ maxHeight: 400, objectFit: "contain", borderRadius: 12, boxShadow: "0px 4px 20px rgba(0,0,0,0.3)" }} />
+
+            }
             {/* Animated scan line */}
             <div
               className="absolute left-0 right-0 h-[3px] animate-scan-line"
-              style={{ background: "linear-gradient(90deg, transparent, #ECFF51, transparent)", boxShadow: "0 0 12px rgba(236,255,81,0.6)" }}
-            />
+              style={{ background: "linear-gradient(90deg, transparent, #ECFF51, transparent)", boxShadow: "0 0 12px rgba(236,255,81,0.6)" }} />
+
           </div>
 
           {/* Context label */}
@@ -110,13 +110,13 @@ const Analyze = () => {
               background: "rgba(255,255,255,0.1)",
               color: "#FFFFFF",
               border: "1px solid rgba(255,255,255,0.2)",
-              fontSize: 17,
+              fontSize: 17
             }}>
             Cancel
           </button>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (

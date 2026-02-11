@@ -62,38 +62,61 @@ const Analyze = () => {
   if (isAnalyzing) {
     return (
       <div className="min-h-screen bg-background flex justify-center">
-        <div className="w-full max-w-[430px] flex flex-col min-h-screen items-center justify-center px-5">
-          {/* Image with scan line */}
-          <div className="relative w-full max-w-[300px] overflow-hidden rounded-xl">
-            {imageData &&
-            <img
-              src={imageData}
-              alt="Scanning"
-              className="w-full object-contain rounded-xl"
-              style={{ boxShadow: "0px 4px 20px rgba(0,0,0,0.3)" }} />
+        <div className="w-full max-w-[430px] flex flex-col min-h-screen items-center px-5">
+          {/* Title at TOP */}
+          <p
+            className="text-center font-bold text-foreground"
+            style={{ marginTop: 80, fontSize: 28, letterSpacing: -0.5 }}>
+            Scanning the vibe...
+          </p>
 
-            }
+          {/* Image with scan line */}
+          <div className="relative overflow-hidden" style={{ marginTop: 40, width: "calc(100% - 80px)", borderRadius: 12 }}>
+            {imageData && (
+              <img
+                src={imageData}
+                alt="Scanning"
+                className="w-full block"
+                style={{ maxHeight: 400, objectFit: "contain", borderRadius: 12, boxShadow: "0px 4px 20px rgba(0,0,0,0.3)" }}
+              />
+            )}
             {/* Animated scan line */}
             <div
               className="absolute left-0 right-0 h-[3px] animate-scan-line"
-              style={{ background: "hsl(var(--cta))", boxShadow: "0 0 12px hsl(var(--cta) / 0.6)" }} />
-
+              style={{ background: "linear-gradient(90deg, transparent, #ECFF51, transparent)", boxShadow: "0 0 12px rgba(236,255,81,0.6)" }}
+            />
           </div>
 
-          <p className="mt-6 text-lg font-semibold text-foreground">Scanning the vibe...</p>
-          <p className="mt-2 text-base" style={{ color: "hsl(var(--cta))" }}>
-            Chatting with {selectedContext ? selectedContext.charAt(0).toUpperCase() + selectedContext.slice(1) : ""}
+          {/* Context label */}
+          <p className="text-center" style={{ marginTop: 24, fontSize: 17, color: "rgba(255,255,255,0.7)" }}>
+            Chatting with{" "}
+            <span style={{ color: "#ECFF51" }}>
+              {selectedContext ? selectedContext.charAt(0).toUpperCase() + selectedContext.slice(1) : ""}
+            </span>
           </p>
 
+          {/* Spacer to push cancel to bottom */}
+          <div className="flex-1" />
+
+          {/* Cancel button at bottom */}
           <button
             onClick={handleCancel}
-            className="mt-8 px-6 py-3 rounded-full border border-border text-foreground text-sm font-medium hover:bg-secondary transition-colors">
-
+            className="font-semibold transition-colors active:scale-[0.97]"
+            style={{
+              marginBottom: 40,
+              width: "calc(100% - 80px)",
+              height: 56,
+              borderRadius: 20,
+              background: "rgba(255,255,255,0.1)",
+              color: "#FFFFFF",
+              border: "1px solid rgba(255,255,255,0.2)",
+              fontSize: 17,
+            }}>
             Cancel
           </button>
         </div>
-      </div>);
-
+      </div>
+    );
   }
 
   return (

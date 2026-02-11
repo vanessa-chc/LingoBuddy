@@ -145,7 +145,7 @@ const Analyze = () => {
 
           {/* Context Pills */}
           <div
-            className="overflow-x-auto overflow-y-hidden pb-1 flex-row mx-[20px] px-[2px] flex items-center justify-center gap-[4px]"
+            className="overflow-x-auto overflow-y-hidden pb-1 flex-row flex items-center justify-center gap-[4px] px-0 mx-0"
             style={{ gap: 12, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
 
             {CONTEXTS.map((ctx) => {

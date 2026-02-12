@@ -49,5 +49,9 @@ As a **CMU METALS** student, I integrated evidence-based learning science into t
 ### 🔌 Supabase (analysis history)
 Supabase is used for **analysis history** (no login in this MVP). Each successful analysis is stored so users can reopen past "Leon's Take" from the History menu. Apply the RLS migration above before going live.
 
+- **Anonymous user ID:** History is isolated per device via `anonymous_user_id` in localStorage. Run the `20260212000000_add_user_id_analysis_history.sql` migration (adds `user_id` column) so new rows store it. **If you see `user_id` as NULL in the dashboard,** you're likely viewing rows inserted by the **old deployed app** (before pushing the guest-ID code). Run the app **locally** (`npm run dev`), do one new analysis, then check the new row in Supabase and the browser console for `[LingoBuddy]` logs.
+- **Times in Supabase:** `created_at` is stored in **UTC**. The dashboard shows UTC (e.g. 14:00+00). In Pittsburgh (EST, UTC−5) that is 9:00 AM local—so the time is correct.
+- **Error logging:** When users hit "Leon is taking a nap" or other failures, the app reports to the `error_log` table (see migration `20260212100000_create_error_log.sql`). In Supabase Dashboard → Table Editor → `error_log` you can see `code`, `message`, `context` (route, anonymous_user_id, user_agent), and `raw_error` (stack trace or response body) to debug and fix issues. RLS allows anon to **insert** only; only you (Dashboard/service_role) can read logs.
+
 ---
 **[Vanessa Chang](https://www.linkedin.com/in/vanessa-chc/)** | [View Case Study](https://www.vanessachangux.com/projects/lingo-buddy?utm_source=github&utm_medium=social&utm_campaign=lingobuddy-readme)

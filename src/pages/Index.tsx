@@ -2,7 +2,6 @@ import { useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { toast } from "sonner";
-import UploadActionSheet from "@/components/UploadActionSheet";
 import HistoryMenu from "@/components/HistoryMenu";
 
 const ACCEPTED_TYPES = "image/png,image/jpeg,image/jpg,image/webp,image/heic";
@@ -19,7 +18,6 @@ new Promise((resolve, reject) => {
 const Index = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [historyMenuOpen, setHistoryMenuOpen] = useState(false);
 
   const navigateToAnalyze = useCallback(
@@ -45,39 +43,14 @@ const Index = () => {
     [navigateToAnalyze]
   );
 
-  const handleSelectSource = useCallback(
-    (source: "camera" | "library" | "files") => {
-      setSheetOpen(false);
-      if (fileInputRef.current) {
-        if (source === "camera") {
-          fileInputRef.current.setAttribute("capture", "environment");
-        } else {
-          fileInputRef.current.removeAttribute("capture");
-        }
-        fileInputRef.current.click();
-      }
-    },
-    []
-  );
+  /** Opens native picker: desktop = Finder/file dialog, mobile = OS bottom sheet (Photo Library / Take Photo / etc.). Native sheet size/position are platform-controlled. */
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
-  const handlePaste = useCallback(async () => {
-    try {
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const imageType = item.types.find((t) => t.startsWith("image/"));
-        if (imageType) {
-          const blob = await item.getType(imageType);
-          const base64 = await fileToBase64(
-            new File([blob], "clipboard.png", { type: imageType })
-          );
-          navigateToAnalyze(base64);
-          return;
-        }
-      }
-    } catch {
-
-      // Clipboard API not available or no image
-    }}, [navigateToAnalyze]);
+  const handlePaste = useCallback(() => {
+    toast.info("Coming out soon!");
+  }, []);
 
   return (
     <div className="min-h-screen w-full bg-[#121212] relative">
@@ -109,7 +82,7 @@ const Index = () => {
           {/* Upload Zone — card #2E2E2E, 16–24px radius, gradient icon */}
           <div className="mt-10 flex flex-col items-center flex-1">
             <div
-              onClick={() => setSheetOpen(true)}
+              onClick={handleUploadClick}
               className="w-full min-h-[320px] rounded-[20px] bg-[#2E2E2E] flex flex-col items-center justify-center py-16 cursor-pointer active:scale-[0.98] transition-transform"
             >
               <svg
@@ -138,6 +111,7 @@ const Index = () => {
 
             <button
               type="button"
+              onClick={handlePaste}
               className="mt-5 text-[15px] text-[#AAAAAA] bg-transparent border-none cursor-pointer hover:text-white/90 transition-colors"
             >
               Paste from clipboard
@@ -165,13 +139,6 @@ const Index = () => {
           />
         </main>
       </div>
-
-      {/* Action Sheet */}
-      <UploadActionSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        onSelectSource={handleSelectSource} />
-
     </div>);
 
 };

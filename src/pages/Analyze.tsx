@@ -3,6 +3,13 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import HistoryMenu from "@/components/HistoryMenu";
 import { analyzeScreenshot } from "@/lib/gemini";
+import { isAnalysisError } from "@/lib/AnalysisError";
+import {
+  DEFAULT_ANALYSIS_ERROR_CODE,
+  isAnalysisErrorCode,
+  type AnalysisErrorCode,
+} from "@/lib/analysisErrorTypes";
+import { reportError } from "@/lib/errorLog";
 import ScreenshotPreview from "@/components/ScreenshotPreview";
 
 const CONTEXTS = [
@@ -45,12 +52,26 @@ const Analyze = () => {
     } catch (e: unknown) {
       if ((e as { name?: string })?.name === "AbortError" || abortRef.current?.signal.aborted) return;
       console.error("Analysis error:", e);
+      const relationshipLabel = CONTEXTS.find((c) => c.value === selectedContext)?.label ?? selectedContext;
+      let errorCategory: AnalysisErrorCode = DEFAULT_ANALYSIS_ERROR_CODE;
+      if (isAnalysisError(e)) {
+        errorCategory = e.code;
+      } else if (e instanceof Error && isAnalysisErrorCode((e as Error & { code?: string }).code)) {
+        errorCategory = (e as Error & { code: AnalysisErrorCode }).code;
+      }
+      reportError({
+        code: "ANALYSIS_FAILED",
+        message: e instanceof Error ? e.message : "Analysis failed",
+        context: { route: "/analyze", relationship_context: relationshipLabel, errorCategory },
+        rawError: e instanceof Error ? e.stack : String(e),
+      });
       setIsAnalyzing(false);
       navigate("/results", {
         state: {
           analysisError: true,
+          errorCategory,
           imageData,
-          relationshipLabel: CONTEXTS.find((c) => c.value === selectedContext)?.label ?? selectedContext,
+          relationshipLabel,
           context: selectedContext,
         },
       });

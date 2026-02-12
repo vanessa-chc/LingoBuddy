@@ -6,9 +6,17 @@ import WordLabCard from "@/components/WordLabCard";
 import PlaybookSection from "@/components/PlaybookSection";
 import ScreenshotPreview from "@/components/ScreenshotPreview";
 import HistoryMenu from "@/components/HistoryMenu";
+import AnalysisErrorState from "@/components/AnalysisErrorState";
 import { analyzeScreenshot } from "@/lib/gemini";
 import { insertAnalysisHistory } from "@/lib/analysisHistory";
+import {
+  DEFAULT_ANALYSIS_ERROR_CODE,
+  isAnalysisErrorCode,
+  type AnalysisErrorCode,
+} from "@/lib/analysisErrorTypes";
+import { isAnalysisError } from "@/lib/AnalysisError";
 import { getOrCreateAnonymousUserId } from "@/lib/anonymousUserId";
+import { reportError } from "@/lib/errorLog";
 
 const CHAMELEON_AVATAR = "/assets/ChameleonAvatar.png";
 
@@ -26,8 +34,17 @@ const Results = () => {
   const fromHistory = (location.state as { fromHistory?: boolean } | undefined)?.fromHistory === true;
   const historyRowId = (location.state as { historyRowId?: string } | undefined)?.historyRowId ?? null;
   const analysisError = (location.state as { analysisError?: boolean } | undefined)?.analysisError === true;
+  const errorCategoryRaw = (location.state as { errorCategory?: string } | undefined)?.errorCategory;
+  const errorCategory: AnalysisErrorCode =
+    typeof errorCategoryRaw === "string" && isAnalysisErrorCode(errorCategoryRaw)
+      ? errorCategoryRaw
+      : DEFAULT_ANALYSIS_ERROR_CODE;
   const errorRetryImage = (location.state as { imageData?: string } | undefined)?.imageData;
   const errorRetryLabel = (location.state as { relationshipLabel?: string } | undefined)?.relationshipLabel;
+
+  /** When Retry fails, we show the new category (e.g. NETWORK_ERROR) without losing image/label for another retry */
+  const [retryErrorCategory, setRetryErrorCategory] = useState<AnalysisErrorCode | null>(null);
+  const displayErrorCategory = retryErrorCategory ?? errorCategory;
 
   // Persist refetch inputs from navigation state so preset change always has image + context
   const refetchRef = useRef<{ imageData: string; relationshipLabel: string } | null>(null);
@@ -58,7 +75,17 @@ const Results = () => {
         },
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Leon's still napping. Try again in a bit?");
+      const category: AnalysisErrorCode = isAnalysisError(e)
+        ? e.code
+        : DEFAULT_ANALYSIS_ERROR_CODE;
+      reportError({
+        code: "RETRY_ANALYSIS_FAILED",
+        message: e instanceof Error ? e.message : "Retry analysis failed",
+        context: { route: "/results", errorCategory: category },
+        rawError: e instanceof Error ? e.stack : String(e),
+      });
+      setRetryErrorCategory(category);
+      toast.error(e instanceof Error ? e.message : "Something went wrong. Try again?");
     } finally {
       setRetryLoading(false);
     }
@@ -79,7 +106,15 @@ const Results = () => {
       analysis_result: analysisData as Record<string, unknown>,
       image_url: imageData,
     }).then(({ error }) => {
-      if (error) console.error("Failed to save analysis history:", error);
+      if (error) {
+        console.error("Failed to save analysis history:", error);
+        reportError({
+          code: "HISTORY_SAVE_FAILED",
+          message: error.message,
+          context: { route: "/results" },
+          rawError: String(error),
+        });
+      }
     });
   }, [fromAnalyze, fromHistory, analysisData, imageData, location.state]);
 
@@ -102,6 +137,12 @@ const Results = () => {
         prev ? { ...prev, playbook: next.playbook } : next
       );
     } catch (e: unknown) {
+      reportError({
+        code: "PRESET_REFETCH_FAILED",
+        message: e instanceof Error ? e.message : "Preset refetch failed",
+        context: { route: "/results" },
+        rawError: e instanceof Error ? e.stack : String(e),
+      });
       toast.error(e instanceof Error ? e.message : "Couldn't update replies. Try again.");
       // Do not clear or overwrite analysisData on error — keep existing UI
     } finally {
@@ -163,8 +204,9 @@ const Results = () => {
     return distances.reduce((a, b) => (a.dist < b.dist ? a : b));
   }, [sheetY, containerHeight]);
 
-  // Handle-only drag handlers
+  // Handle-only drag handlers (work for both mouse and touch; touch-action: none on handle so mobile doesn't scroll)
   const onHandlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
     isDragOnHandle.current = true;
     setIsDragging(true);
     setIsAnimating(false);
@@ -216,27 +258,12 @@ const Results = () => {
                 <Menu className="w-6 h-6" />
               </button>
             </header>
-            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-              <img
-                src={CHAMELEON_AVATAR}
-                alt="Leon"
-                className="h-24 w-24 rounded-full object-cover ring-2 ring-white/20 opacity-90"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
-              />
-              <p className="mt-6 text-[17px] text-white/90 leading-snug">
-                Oops, Leon is taking a nap. 😴 He might have over-analyzed too many vibes! Try again in a bit?
-              </p>
-              <button
-                type="button"
-                onClick={handleRetryAnalysis}
-                disabled={retryLoading}
-                className="mt-6 py-3 px-6 rounded-2xl font-semibold text-white bg-[#9DFF50]/20 text-[#9DFF50] border border-[#9DFF50]/50 active:opacity-90 disabled:opacity-60 transition-opacity"
-              >
-                {retryLoading ? "One sec…" : "Try Again"}
-              </button>
-            </div>
+            <AnalysisErrorState
+              errorType={displayErrorCategory}
+              onRetry={handleRetryAnalysis}
+              onTryAnotherPhoto={() => navigate("/")}
+              isLoading={retryLoading}
+            />
             <HistoryMenu open={historyMenuOpen} onClose={() => setHistoryMenuOpen(false)} selectedId={historyRowId} />
           </div>
         </div>
@@ -321,10 +348,14 @@ const Results = () => {
             ...(isAnimating && !isDragging ? SPRING : {}),
           }}
         >
-          {/* Drag handle — centered, Figma proportions (light gray bar) */}
+          {/* Drag handle — centered; touch-action: none so mobile can swipe sheet instead of scroll */}
           <div
-            className="flex justify-center cursor-grab active:cursor-grabbing select-none"
-            style={{ padding: "14px 0 10px" }}
+            className="flex justify-center cursor-grab active:cursor-grabbing select-none touch-manipulation"
+            style={{
+              padding: "14px 0 10px",
+              minHeight: 44,
+              touchAction: "none",
+            }}
             onPointerDown={onHandlePointerDown}
             onPointerMove={onHandlePointerMove}
             onPointerUp={onHandlePointerUp}

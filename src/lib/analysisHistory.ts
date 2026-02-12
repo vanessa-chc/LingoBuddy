@@ -25,8 +25,11 @@ export async function insertAnalysisHistory(params: {
     analysis_result: params.analysis_result,
     image_url: params.image_url ?? null,
   };
-  console.log("insertAnalysisHistory payload user_id:", row.user_id);
-  const { error } = await supabase.from("analysis_history").insert(row);
+  console.log("[LingoBuddy] insertAnalysisHistory payload user_id:", row.user_id);
+  console.log("[LingoBuddy] full insert row (for Network tab check):", { ...row, analysis_result: "(omitted)" });
+  const { data, error } = await supabase.from("analysis_history").insert(row).select("id, user_id").single();
+  if (data) console.log("[LingoBuddy] inserted row from DB:", data);
+  if (error) console.error("[LingoBuddy] insert error:", error);
   return { error: error ? new Error(error.message) : null };
 }
 

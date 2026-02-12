@@ -40,6 +40,32 @@ export type Database = {
           created_at?: string;
         };
       };
+      error_log: {
+        Row: {
+          id: string;
+          created_at: string;
+          code: string | null;
+          message: string;
+          context: Json | null;
+          raw_error: string | null;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          code?: string | null;
+          message: string;
+          context?: Json | null;
+          raw_error?: string | null;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          code?: string | null;
+          message?: string;
+          context?: Json | null;
+          raw_error?: string | null;
+        };
+      };
     }
     Views: {
       [_ in never]: never

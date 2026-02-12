@@ -17,6 +17,7 @@ export type Database = {
       analysis_history: {
         Row: {
           id: string;
+          user_id: string | null;
           relationship_context: string;
           analysis_result: Record<string, unknown>;
           image_url: string | null;
@@ -24,6 +25,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
+          user_id: string;
           relationship_context: string;
           analysis_result: Record<string, unknown>;
           image_url?: string | null;
@@ -31,6 +33,7 @@ export type Database = {
         };
         Update: {
           id?: string;
+          user_id?: string | null;
           relationship_context?: string;
           analysis_result?: Record<string, unknown>;
           image_url?: string | null;

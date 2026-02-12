@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sheet";
 import { useAppContainer } from "@/contexts/AppContainerContext";
 import { listAnalysisHistory, type AnalysisHistoryRow } from "@/lib/analysisHistory";
+import { getOrCreateAnonymousUserId } from "@/lib/anonymousUserId";
 import { getRelativeTime } from "@/lib/relativeTime";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +45,8 @@ export default function HistoryMenu({ open, onClose, selectedId = null }: Histor
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    listAnalysisHistory()
+    const anonymousUserId = getOrCreateAnonymousUserId();
+    listAnalysisHistory(anonymousUserId)
       .then(({ data, error }) => {
         if (error) return;
         setItems(data ?? []);

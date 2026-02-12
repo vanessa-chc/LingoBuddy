@@ -8,6 +8,7 @@ import ScreenshotPreview from "@/components/ScreenshotPreview";
 import HistoryMenu from "@/components/HistoryMenu";
 import { analyzeScreenshot } from "@/lib/gemini";
 import { insertAnalysisHistory } from "@/lib/analysisHistory";
+import { getOrCreateAnonymousUserId } from "@/lib/anonymousUserId";
 
 const CHAMELEON_AVATAR = "/assets/ChameleonAvatar.png";
 
@@ -70,7 +71,10 @@ const Results = () => {
     if (!analysisData || !imageData || !relationshipLabel) return;
 
     hasSavedToHistoryRef.current = true;
+    const anonymousUserId = getOrCreateAnonymousUserId();
+    console.log("Current Guest ID:", anonymousUserId);
     insertAnalysisHistory({
+      user_id: anonymousUserId,
       relationship_context: relationshipLabel,
       analysis_result: analysisData as Record<string, unknown>,
       image_url: imageData,

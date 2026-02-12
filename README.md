@@ -20,7 +20,7 @@ As a **CMU METALS** student, I integrated evidence-based learning science into t
 - **Adaptive Personalization (Vision):** Future iterations focus on tailoring content based on the user's specific cultural background and professional goals.
 
 ### 📍 Current version (MVP scope)
-- **No login.** Use the app immediately: upload a chat screenshot, pick context (Friend / Work / Dating / Formal), and get Leon’s take.
+- **No login.** Use the app immediately: upload a chat screenshot, pick context (Friend / Work / Dating / Formal), and get Leon's take.
 - **Flow:** Home → Upload (photo library, camera, or files) → Analyze (context + Gemini) → Results (Vibe Check, Word Lab, Playbook).
 - **Playbook:** Three reply types (Vibe Match, Stay Chill, Keep it Real). Customization accordion lets you switch tone (Witty, Sincere, Formal); only the replies refetch, not Vibe Check or Word Lab.
 - **New chat +** on Results returns to home. Analysis history (e.g. via Supabase) is planned for a later release.
@@ -33,8 +33,21 @@ As a **CMU METALS** student, I integrated evidence-based learning science into t
 3. Install dependencies: `npm install`
 4. Start the dev server: `npm run dev`
 
-### 🔌 Supabase (future)
-Supabase is wired in the repo for **analysis history** (no auth in this MVP). When we add it: store each analysis (context, vibe check, word lab, playbook) so users can revisit past “Leon’s Take” sessions.
+### 🚢 Deploy to Vercel (e.g. for mobile testing)
+1. Push the repo to GitHub and [import the project in Vercel](https://vercel.com/new).
+2. Set **Environment Variables** in the Vercel project:
+   - `VITE_GEMINI_API_KEY` — your Gemini API key (required for analysis).
+   - `VITE_SUPABASE_URL` — Supabase project URL.
+   - `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase **anon/public** key (not the service_role key).
+3. Deploy. The app uses client-side routing; `vercel.json` rewrites all routes to `index.html` so `/analyze` and `/results` work on refresh and when opening links on mobile.
+
+### 🔒 Supabase security (before publishing)
+- **RLS:** Row Level Security is enabled on `analysis_history` via the migration in `supabase/migrations/`. Run it in the Supabase SQL editor (Dashboard → SQL Editor) or with the Supabase CLI so anon can only **insert** and **select** (no update/delete from the client).
+- **Keys:** Use only the **anon (publishable)** key in the frontend. Never put `service_role` in the client or in Vercel env vars that the browser can see.
+- **Optional:** In Supabase Dashboard → Authentication → Settings, you can restrict auth if you're not using it yet.
+
+### 🔌 Supabase (analysis history)
+Supabase is used for **analysis history** (no login in this MVP). Each successful analysis is stored so users can reopen past "Leon's Take" from the History menu. Apply the RLS migration above before going live.
 
 ---
 **[Vanessa Chang](https://www.linkedin.com/in/vanessa-chc/)** | [View Case Study](https://www.vanessachangux.com/projects/lingo-buddy?utm_source=github&utm_medium=social&utm_campaign=lingobuddy-readme)

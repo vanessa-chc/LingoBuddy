@@ -11,7 +11,7 @@ import { isAnalysisErrorCode } from "@/lib/analysisErrorTypes";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const MODEL = "gemini-2.5-flash";
 
-/** PRD: vibeCheck.summary, wordLab[], playbook.{ vibeMatch, safeChill, sincere } */
+/** vibeCheck, wordLab (tier, optional cultural_tip), playbook */
 export interface AnalysisResult {
   vibeCheck: {
     summary: string;
@@ -20,6 +20,11 @@ export interface AnalysisResult {
     slang: string;
     definition: string;
     usage: string;
+    /** One-word tier: "Slang" | "Nuance" | "Literal" */
+    tier: "Slang" | "Nuance" | "Literal";
+    /** Optional 1-sentence tip when there are usage risks or cultural nuances */
+    cultural_tip?: string;
+    reasoning: string;
   }>;
   playbook: {
     vibeMatch: { intent: string; reply: string };
@@ -46,39 +51,51 @@ export function parseDataUrl(dataUrl: string): { mimeType: string; base64: strin
   return { mimeType: match[1], base64: match[2] };
 }
 
-/** Build prompt: selectedPreset optional; if empty, AI chooses tone automatically. PRD: preset refetch must include Tone + 3 categories. */
+/** Build prompt per Issue 7 Master Prompt: Slang Spectrum, confidence/hunch, strict JSON. */
 const ANALYSIS_PROMPT = (relationshipContext: string, selectedPreset: string) => {
   const presetInstruction = selectedPreset && selectedPreset.trim()
-    ? `Tone: ${selectedPreset.trim()}. Generate 3 replies for categories: Vibe Match, Stay Chill, Keep it Real.`
-    : "Choose the most appropriate tone automatically (e.g. Witty or Sincere) based on the conversation. In both cases, generate exactly 3 replies matching these functions: Vibe Match (Recommended), Stay Chill, and Keep it Real.";
-  return `You are Leon, a friendly chameleon AI helping international students understand American slang.
+    ? `Tone: ${selectedPreset.trim()}. Generate 3 replies for: Vibe Match (Recommended), Stay Chill, Keep it Real.`
+    : "Choose the most appropriate tone automatically. Generate exactly 3 replies: Vibe Match (Recommended), Stay Chill, and Keep it Real.";
+  return `You are Leon, a culturally savvy, supportive, and witty American friend who helps international students decode social nuances. Explain slang and cultural context without being judgmental or overly academic.
 
 CRITICAL — CHECK THE IMAGE FIRST (do this before anything else):
-- The image MUST be a screenshot of a chat/messaging app with visible message bubbles, conversation text, or a clear messaging UI (e.g. iMessage, WhatsApp, Instagram DMs). You must be able to read actual words that people typed in the chat.
-- If the image is NOT a chat screenshot — for example: a selfie, a single person photo, character art, an icon, a logo, a meme with no dialogue, a landscape, or any image where you cannot see real message text or chat bubbles — you MUST return ONLY this JSON and nothing else: {"errorCode": "INVALID_IMAGE_CONTENT"}.
-- Do NOT analyze non-chat images. Do NOT invent, infer, or hallucinate a conversation. Do NOT describe "vibes" or "intent" for an image that has no visible chat. If there is no conversation text in the image, return {"errorCode": "INVALID_IMAGE_CONTENT"}.
+- The image MUST be a screenshot of a chat/messaging app with visible message bubbles, conversation text, or a clear messaging UI. You must be able to read actual words that people typed in the chat.
+- If the image is NOT a chat screenshot (e.g. selfie, character art, icon, logo, meme with no dialogue, landscape, or no visible chat text), return ONLY: {"errorCode": "INVALID_IMAGE_CONTENT"}.
+- Do NOT analyze non-chat images. Do NOT invent or hallucinate a conversation.
 - If the image is too blurry or low-resolution to read the text accurately, return only: {"errorCode": "IMAGE_QUALITY_ISSUE"}.
 
 USER CONTEXT: Chatting with ${relationshipContext}
 
-Only if the image clearly contains a chat/conversation with readable message text, analyze it. ${presetInstruction}
+THE SLANG SPECTRUM — use these exact one-word values for the "tier" field:
+- "Slang" — Core urban slang (e.g. Slay, No cap). MANDATORY: always include.
+- "Nuance" — Social nuance: standard words in specific contexts (e.g. Lowkey, Midterm grind). Include if subtext is essential.
+- "Literal" — Standard English / literal vocabulary (e.g. Mini, Course, Assignment). IGNORE in production; include only in test mode.
 
-Return ONLY valid JSON with this exact structure (no <b> or other HTML tags):
+LOGIC CONSTRAINTS:
+- Ambiguity: If a word has 90%+ probability of being standard/literal (e.g. "mini" meaning size), treat as Tier 3 and skip it.
+- Cultural tip (absolute quality filter): High bar—if a word's usage is straightforward, return an empty string for cultural_tip even if it's slang (e.g. "chill" has straightforward usage: no tip). Leon should ONLY add a tip when there is at least one of: (1) Social Risk—e.g. "Don't use this with your boss"; (2) Hidden Nuance—e.g. "This word sounds sarcastic in certain tones"; (3) Cultural Origin—e.g. "This started on TikTok and might feel cringe if used in person." Only words that actually need a pro-tip get one. When present: max 30 words, vary sentence structure, no bolding or single-phrase starters. Keep cultural_tip and reasoning strictly separate.
+
+Only if the image clearly contains a chat with readable message text, analyze it. ${presetInstruction}
+
+Return ONLY valid JSON in this exact structure (no HTML tags, no markdown fences):
 
 {
   "vibeCheck": {
-    "summary": "Max 2 sentences. Focus on social intent and overall tone only."
+    "summary": "Max 2 sentences focusing on social intent."
   },
   "wordLab": [
     {
-      "slang": "the slang word or phrase only",
-      "definition": "Short, clear meaning",
-      "usage": "Casual explanation of how it's used in this context"
+      "slang": "The term",
+      "definition": "Short, clear meaning (under 8 words).",
+      "usage": "Casual explanation of how it's used in this context.",
+      "tier": "Slang or Nuance or Literal (exactly one word)",
+      "cultural_tip": "Optional, max 30 words. Return null or \"\" unless the word needs a pro-tip. Only add when there is: Social Risk (e.g. don't use with your boss), Hidden Nuance (e.g. sounds sarcastic in certain tones), or Cultural Origin (e.g. TikTok-origin, might feel cringe in person). Straightforward usage = no tip (e.g. 'chill' gets no cultural_tip). When present, vary openings; no bolding or label-like starters.",
+      "reasoning": "Internal only. Briefly explain the cultural source or logic. Do not repeat or mix this into cultural_tip."
     }
   ],
   "playbook": {
     "vibeMatch": {
-      "intent": "Vibe Match",
+      "intent": "Vibe Match (Recommended)",
       "reply": "Natural response matching the group chat energy"
     },
     "safeChill": {
@@ -93,13 +110,12 @@ Return ONLY valid JSON with this exact structure (no <b> or other HTML tags):
 }
 
 RULES:
-- Vibe Check: maximum 2 sentences. Focus on social intent only.
-- wordLab: STRICT slang only. No academic or formal terms. Only casual slang, abbreviations, or colloquialisms from the actual messages you see.
-- No HTML tags in JSON. Plain text only.
-- Keep definitions under 8 words.
-- Playbook replies: sound like a 22-year-old, not a textbook. Include 1–2 emojis per reply when it fits. Skip emojis only if the context is very formal.
-- If no slang detected in the messages, explain overall vibe and suggest replies anyway. Maximum 3 slang terms in wordLab.
-- Return only the JSON object, no markdown or code fences. Do not include errorCode in successful analysis responses.`;
+- wordLab: For each term set "tier" to exactly one word: "Slang", "Nuance", or "Literal". Include only Slang and Nuance in production; Literal only for test mode.
+- cultural_tip: Only when the word actually needs a pro-tip. Return null or \"\" for straightforward usage (e.g. chill, LOL, OK—no tip). Add only for: Social Risk, Hidden Nuance, or Cultural Origin. Max 30 words when present. Vary openings; no bolding or single-phrase starters. Keep strictly separate from reasoning.
+- Keep definitions under 8 words. No HTML in JSON. Plain text only.
+- Playbook replies: sound like a 22-year-old. Include 1–2 emojis when it fits; skip if very formal.
+- Maximum 3 terms in wordLab. If no slang detected, explain overall vibe and suggest replies anyway.
+- Return only the JSON object. Do not include errorCode in successful responses.`;
 };
 
 export async function analyzeScreenshot(
@@ -187,12 +203,28 @@ export async function analyzeScreenshot(
     }
     if (!parsed.vibeCheck?.summary) parsed.vibeCheck = { summary: "Analysis complete." };
     if (!Array.isArray(parsed.wordLab)) parsed.wordLab = [];
+    // Slang Spectrum: normalize fields; filter out Literal (Tier 3); optional cultural_tip
+    type RawTerm = { slang?: string; definition?: string; usage?: string; tier?: string; cultural_tip?: string; reasoning?: string };
+    parsed.wordLab = (parsed.wordLab as RawTerm[])
+      .filter((t) => t.slang && (t.tier as string) !== "Literal")
+      .map((t) => ({
+        slang: t.slang ?? "",
+        definition: t.definition ?? "",
+        usage: t.usage ?? "",
+        tier: t.tier === "Slang" || t.tier === "Nuance" ? t.tier : "Nuance",
+        cultural_tip: typeof t.cultural_tip === "string" && t.cultural_tip.trim() ? t.cultural_tip.trim() : undefined,
+        reasoning: t.reasoning ?? "",
+      }));
     if (!parsed.playbook) {
       parsed.playbook = {
-        vibeMatch: { intent: "Witty", reply: "" },
-        safeChill: { intent: "Safe & Chill", reply: "" },
-        sincere: { intent: "Sincere", reply: "" },
+        vibeMatch: { intent: "Vibe Match (Recommended)", reply: "" },
+        safeChill: { intent: "Stay Chill", reply: "" },
+        sincere: { intent: "Keep it Real", reply: "" },
       };
+    } else {
+      parsed.playbook.vibeMatch = { ...parsed.playbook.vibeMatch, intent: parsed.playbook.vibeMatch?.intent ?? "Vibe Match (Recommended)" };
+      parsed.playbook.safeChill = { ...parsed.playbook.safeChill, intent: parsed.playbook.safeChill?.intent ?? "Stay Chill" };
+      parsed.playbook.sincere = { ...parsed.playbook.sincere, intent: parsed.playbook.sincere?.intent ?? "Keep it Real" };
     }
     return parsed as AnalysisResult;
   } catch (e) {

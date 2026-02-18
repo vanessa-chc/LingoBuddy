@@ -410,19 +410,28 @@ const Results = () => {
             </section>
             <div className="h-px bg-border mb-5" />
 
-            {/* Word Lab — clean list from wordLab or slangTerms: Bold Lime Slang -> Definition */}
+            {/* Word Lab — wordLab or slangTerms; cultural tips in cards; single footer for section */}
             {(() => {
               const terms = analysisData.wordLab ?? analysisData.slangTerms ?? [];
               if (terms.length === 0) return null;
+              const hasAnyCulturalTip = terms.some(
+                (t: { cultural_tip?: string }) =>
+                  typeof t.cultural_tip === "string" && t.cultural_tip.trim().length > 0
+              );
               return (
                 <>
                   <section className="mb-5">
-                    <span className="text-[17px] font-bold text-white mb-3 block">Word Lab</span>
+                    <span className="text-[17px] font-bold text-white block mb-3">Word Lab</span>
                     <div className="flex flex-col gap-3">
                       {terms.slice(0, 3).map((term, i) => (
                         <WordLabCard key={i} term={term} />
                       ))}
                     </div>
+                    {hasAnyCulturalTip && (
+                      <p className="mt-3 text-[11px] text-muted-foreground/70 italic">
+                        Insights based on Leon&apos;s analysis of current digital and social trends.
+                      </p>
+                    )}
                   </section>
                   <div className="h-px bg-border mb-5" />
                 </>

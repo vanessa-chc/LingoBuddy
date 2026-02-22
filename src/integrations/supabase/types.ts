@@ -66,6 +66,35 @@ export type Database = {
           raw_error?: string | null;
         };
       };
+      analysis_feedback: {
+        Row: {
+          id: string;
+          analysis_id: string;
+          user_id: string | null;
+          is_helpful: boolean;
+          created_at: string;
+          context: string | null;
+          slang_terms: string[] | null;
+        };
+        Insert: {
+          id?: string;
+          analysis_id: string;
+          user_id?: string | null;
+          is_helpful: boolean;
+          created_at?: string;
+          context?: string | null;
+          slang_terms?: string[] | null;
+        };
+        Update: {
+          id?: string;
+          analysis_id?: string;
+          user_id?: string | null;
+          is_helpful?: boolean;
+          created_at?: string;
+          context?: string | null;
+          slang_terms?: string[] | null;
+        };
+      };
     }
     Views: {
       [_ in never]: never

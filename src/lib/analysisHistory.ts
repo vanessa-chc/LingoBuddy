@@ -18,7 +18,7 @@ export async function insertAnalysisHistory(params: {
   relationship_context: string;
   analysis_result: Record<string, unknown>;
   image_url: string | null;
-}): Promise<{ error: Error | null }> {
+}): Promise<{ data: { id: string } | null; error: Error | null }> {
   const row = {
     user_id: params.user_id,
     relationship_context: params.relationship_context,
@@ -30,7 +30,10 @@ export async function insertAnalysisHistory(params: {
   const { data, error } = await supabase.from("analysis_history").insert(row).select("id, user_id").single();
   if (data) console.log("[LingoBuddy] inserted row from DB:", data);
   if (error) console.error("[LingoBuddy] insert error:", error);
-  return { error: error ? new Error(error.message) : null };
+  return {
+    data: data ? { id: data.id } : null,
+    error: error ? new Error(error.message) : null,
+  };
 }
 
 export async function listAnalysisHistory(user_id: string): Promise<{

@@ -1,12 +1,13 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, Plus } from "lucide-react";
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
 import WordLabCard from "@/components/WordLabCard";
 import PlaybookSection from "@/components/PlaybookSection";
 import ScreenshotPreview from "@/components/ScreenshotPreview";
 import HistoryMenu from "@/components/HistoryMenu";
 import AnalysisErrorState from "@/components/AnalysisErrorState";
+import { FeedbackFooter } from "@/components/FeedbackFooter";
 import { analyzeScreenshot } from "@/lib/gemini";
 import { insertAnalysisHistory } from "@/lib/analysisHistory";
 import {
@@ -58,6 +59,19 @@ const Results = () => {
     return () => { refetchRef.current = null; };
   }, [location.state]);
 
+  const [savedAnalysisId, setSavedAnalysisId] = useState<string | null>(null);
+  const relationshipLabel = (location.state as { relationshipLabel?: string } | undefined)?.relationshipLabel;
+  const analysisId = useMemo(
+    () => historyRowId ?? savedAnalysisId ?? null,
+    [historyRowId, savedAnalysisId]
+  );
+  const slangTerms = useMemo(() => {
+    const terms = analysisData?.wordLab ?? [];
+    return Array.isArray(terms)
+      ? (terms as { slang?: string }[]).map((t) => t.slang).filter((s): s is string => Boolean(s))
+      : [];
+  }, [analysisData]);
+
   const [retryLoading, setRetryLoading] = useState(false);
   const handleRetryAnalysis = useCallback(async () => {
     if (!errorRetryImage || !errorRetryLabel) return;
@@ -105,7 +119,8 @@ const Results = () => {
       relationship_context: relationshipLabel,
       analysis_result: analysisData as Record<string, unknown>,
       image_url: imageData,
-    }).then(({ error }) => {
+    }).then(({ data, error }) => {
+      if (data?.id) setSavedAnalysisId(data.id);
       if (error) {
         console.error("Failed to save analysis history:", error);
         reportError({
@@ -444,6 +459,15 @@ const Results = () => {
               onPresetChange={handlePresetChange}
               isPresetLoading={playbookLoading}
             />
+
+            {/* Feedback — only when we have a valid analysis_id to link in Supabase */}
+            {analysisId && (
+              <FeedbackFooter
+                analysisId={analysisId}
+                context={relationshipLabel ?? undefined}
+                slangTerms={slangTerms.length > 0 ? slangTerms : undefined}
+              />
+            )}
           </div>
         </div>
       </div>
